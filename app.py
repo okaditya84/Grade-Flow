@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Set page config - must be the first Streamlit command
 st.set_page_config(
-    page_title="AI Teacher's Assistant",
+    page_title="Grade Flow",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
