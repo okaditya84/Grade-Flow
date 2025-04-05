@@ -55,12 +55,12 @@ The application will be available at http://localhost:8501
 ## Usage
 
 ### For Students
-1. Log in with your student email (format: name@students.college.ac.in)
+1. Log in with your student email (format: name@students.<college_name>.ac.in)
 2. Submit your assignments, exams, tests, or projects
 3. View your submission history and evaluations
 
 ### For Teachers
-1. Log in with your faculty email (format: name@faculty.college.ac.in)
+1. Log in with your faculty email (format: name@faculty.<college_name>.ac.in)
 2. Upload question papers and model answers
 3. Define evaluation criteria
 4. Evaluate student submissions
