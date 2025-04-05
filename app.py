@@ -57,7 +57,7 @@ def main():
 
 
 def show_auth_page():
-    st.title("Grade Flow")
+    st.title("🏫 Grade Flow 🏫")
 
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
