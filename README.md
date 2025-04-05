@@ -1,5 +1,4 @@
-# AI Teacher's Assistant
-
+# Grade Flow: Teacher's Assitant
 An advanced application for evaluating student submissions using AI. This tool helps teachers efficiently grade assignments, exams, tests, and projects.
 
 ## Features
