@@ -1,0 +1,13 @@
+Created by: debu@faculty.pdpu.ac.in
+Date: 2025-04-03 10:35:12
+
+Evaluation Criteria for Assignments:
+1. Understanding: 30 points - Demonstrates grasp of concepts and theories
+2. Application: 30 points - Correctly applies concepts to problems
+3. Thoroughness: 20 points - Covers all aspects of the assignment
+4. Creativity: 10 points - Shows original thinking when appropriate
+5. Presentation: 10 points - Well-structured and professionally presented
+
+Higher weight questions should demonstrate deeper understanding and application.
+Lower weight questions focus on basic concept correctness.
+Evaluate very strictly.

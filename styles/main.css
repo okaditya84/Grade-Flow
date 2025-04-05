@@ -1,0 +1,191 @@
+/* Main Styles for AI Teacher's Assistant */
+
+/* General Typography */
+body {
+    font-family: 'Inter', sans-serif;
+    color: #333;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: #1E3A8A;
+    margin-bottom: 0.5rem;
+}
+
+/* Header and Title */
+.main-header {
+    background-color: #1E3A8A;
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+/* Cards and Containers */
+.card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons */
+.stButton>button {
+    background-color: #1E3A8A;
+    color: white;
+    border-radius: 6px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.stButton>button:hover {
+    background-color: #2563EB;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.secondary-button>button {
+    background-color: #f3f4f6;
+    color: #1E3A8A;
+    border: 1px solid #e5e7eb;
+}
+
+.secondary-button>button:hover {
+    background-color: #e5e7eb;
+    color: #1E3A8A;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2px;
+    background-color: #f3f4f6;
+    padding: 5px;
+    border-radius: 8px 8px 0 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 10px 20px;
+    border-radius: 5px 5px 0 0;
+    font-weight: 500;
+    background-color: #e5e7eb;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #1E3A8A;
+    color: white;
+}
+
+/* Forms and Inputs */
+input, textarea, .stSelectbox, .stFileUploader {
+    border-radius: 6px !important;
+    border: 1px solid #d1d5db !important;
+}
+
+.stTextInput>div>div>input:focus, 
+.stTextArea>div>div>textarea:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* Tables and DataFrames */
+.dataframe {
+    border-collapse: collapse;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dataframe th {
+    background-color: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px;
+}
+
+.dataframe td {
+    padding: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.dataframe tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Evaluation and Report Cards */
+.evaluation-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: #f9fafb;
+}
+
+.score-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #1E3A8A;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 auto 20px auto;
+}
+
+.feedback-section {
+    border-left: 4px solid #2563EB;
+    padding-left: 16px;
+    margin: 16px 0;
+}
+
+/* Sidebar */
+.sidebar .sidebar-content {
+    background-color: #f8fafc;
+}
+
+.sidebar h1, .sidebar h2, .sidebar h3 {
+    color: #1E3A8A;
+}
+
+/* Custom Components */
+.success-message {
+    background-color: #ecfdf5;
+    border: 1px solid #10b981;
+    color: #064e3b;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.error-message {
+    background-color: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #7f1d1d;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .card {
+        padding: 1rem;
+    }
+    
+    .dataframe th, .dataframe td {
+        padding: 8px;
+    }
+} 
