@@ -58,7 +58,7 @@ def main():
 
 def show_auth_page():
     st.title("🏫 Grade Flow 🏫")
-
+    st.subheader("You are the future of India, and we are here to help you succeed!")
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
     with tab1:
