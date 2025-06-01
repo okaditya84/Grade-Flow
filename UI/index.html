@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grade Flow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: 'Outfit', sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      .login-btn {
+        transition: all 0.3s ease;
+        transform: translateY(0);
+      }
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 168, 232, 0.3);
+      }
+      .login-panel {
+        position: fixed;
+        top: 0;
+        right: -450px;
+        width: 100%;
+        max-width: 450px;
+        height: 100vh;
+        background: linear-gradient(135deg, #003459 0%, #00171F 50%, #003459 100%);
+        transition: all 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+        z-index: 1000;
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5);
+        overflow-y: auto;
+      }
+      .login-panel.active {
+        right: 0;
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.5s ease;
+        z-index: 999;
+      }
+      .overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+      .tab-button {
+        background: transparent;
+        border: none;
+        color: #fff;
+        opacity: 0.7;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        padding: 12px 0;
+        width: 50%;
+        cursor: pointer;
+      }
+      .tab-button.active {
+        opacity: 1;
+        border-bottom: 3px solid #00A8E8;
+      }
+      .form-input {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 6px;
+        width: 100%;
+        transition: all 0.3s ease;
+        margin-bottom: 16px;
+        outline: none;
+      }
+      .form-input:focus {
+        border-color: #00A8E8;
+        background-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 0 2px rgba(0, 168, 232, 0.3);
+      }
+      .form-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .submit-button {
+        width: 100%;
+        background-color: #00A8E8;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .submit-button:hover:not(:disabled) {
+        background-color: #007EA7;
+        transform: translateY(-2px);
+      }
+      .submit-button:disabled {
+        background-color: #666;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .close-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        z-index: 1001;
+        transition: all 0.3s ease;
+      }
+      .close-button:hover {
+        color: #00A8E8;
+        transform: rotate(90deg);
+      }
+      .form-container {
+        display: none;
+        animation: fadeIn 0.5s ease forwards;
+      }
+      .form-container.active {
+        display: block;
+      }
+      .message {
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        text-align: center;
+      }
+      .message.error {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .message.success {
+        background-color: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @media (max-width: 640px) {
+        .login-panel {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-[#00171F] text-white antialiased">
+    <header class="flex justify-between items-center px-8 py-6 bg-[#00171F] sticky top-0 z-50">
+      <h1 class="text-2xl font-bold tracking-wider">Grade Flow</h1>
+      <nav class="space-x-8 text-lg">
+        <a href="#" class="hover:text-[#00A8E8] transition-colors duration-300">Home</a>
+        <a href="#about" class="hover:text-[#00A8E8] transition-colors duration-300">About</a>
+      </nav>
+    </header>
+
+    <!-- <section class="flex flex-col lg:flex-row items-center justify-between px-10 lg:px-24 py-20 bg-[#00171F] relative">
+      <div class="lg:w-1/2 max-w-xl mb-12 lg:mb-0">
+        <h2 class="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+          Empower Your <span class="text-[#00A8E8]">Learning</span><br />With Smart Feedback
+        </h2>
+        <p class="text-gray-300 text-lg mb-8">
+          Automate grading and deliver meaningful, personalized feedback to students. Save time, reduce errors, and elevate the education experience.
+        </p>
+
+        <button 
+          id="loginButton"
+          class="login-btn group flex items-center bg-[#00A8E8] hover:bg-[#007EA7] text-white font-semibold py-3 px-8 rounded-lg text-lg transition duration-300 ease-in-out"
+        >
+          <i class="fas fa-arrow-circle-left mr-2 group-hover:animate-pulse"></i>
+          Login / Sign Up
+        </button>
+      </div>
+
+      <div class="lg:w-1/2 flex justify-center">
+        <img
+          src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGVzOWxkMnVjbHd4Z3BwdjF0bG00NTI5dXV5cW84Z2Y2Ym9tcnZicyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/Q2TUxkDJBxY7KV753P/giphy.gif"
+          alt="AI Assistant Animation"
+          class="w-[360px] h-auto drop-shadow-2xl rounded-xl"
+        />
+      </div>
+    </section> -->
+
+    <section class="flex flex-col lg:flex-row items-center justify-between px-10 lg:px-24 py-20 bg-[#00171F] relative">
+  <div class="lg:w-1/2 max-w-xl mb-12 lg:mb-0">
+    <h2 class="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+      AI-Powered <span class="text-[#00A8E8]">Grading</span><br />for Smarter Education
+    </h2>
+    <p class="text-gray-300 text-lg mb-6">
+      An advanced application for evaluating student submissions using AI. This tool helps teachers efficiently grade assignments, exams, tests, and projects. It streamlines their workflow by automating evaluations, generating personalized feedback, and delivering detailed performance reports — all tailored to each student.
+    </p>
+
+    <p class="text-gray-400 text-base mb-8">
+      Empower educators to focus on teaching while AI takes care of repetitive grading tasks.
+    </p>
+
+    <button 
+      id="loginButton"
+      class="login-btn group flex items-center bg-[#00A8E8] hover:bg-[#007EA7] text-white font-semibold py-3 px-8 rounded-lg text-lg transition duration-300 ease-in-out"
+    >
+      <i class="fas fa-arrow-circle-left mr-2 group-hover:animate-pulse"></i>
+      Login / Sign Up
+    </button>
+  </div>
+
+  <div class="lg:w-1/2 flex justify-center">
+    <img
+      src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGVzOWxkMnVjbHd4Z3BwdjF0bG00NTI5dXV5cW84Z2Y2Ym9tcnZicyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/Q2TUxkDJBxY7KV753P/giphy.gif"
+      alt="AI Assistant Animation"
+      class="w-[360px] h-auto drop-shadow-2xl rounded-xl"
+    />
+  </div>
+</section>
+
+    <div id="overlay" class="overlay"></div>
+
+    <div id="loginPanel" class="login-panel">
+      <button id="closeButton" class="close-button">
+        <i class="fas fa-times"></i>
+      </button>
+      
+      <div class="flex flex-col items-center justify-center h-full p-8">
+        <div class="w-full max-w-md">
+          <h2 class="text-3xl font-bold text-white mb-2 text-center">Welcome Back</h2>
+          <p class="text-gray-300 text-center mb-8">We're glad to see you again!</p>
+          
+          <div class="flex mb-8 border-b border-gray-700">
+            <button id="loginTab" class="tab-button active">Login</button>
+            <button id="signupTab" class="tab-button">Sign Up</button>
+          </div>
+
+          <div id="messageContainer"></div>
+          
+          <div id="loginForm" class="form-container active">
+            <form id="loginFormElement">
+              <input 
+                type="email" 
+                class="form-input" 
+                placeholder="Email Address" 
+                id="loginEmail" 
+                required
+              />
+              <input 
+                type="password" 
+                class="form-input" 
+                placeholder="Password" 
+                id="loginPassword" 
+                required
+              />
+              <button type="submit" id="loginSubmitBtn" class="submit-button">
+                Login
+              </button>
+            </form>
+            <p class="text-gray-400 text-sm mt-4 text-center">
+              Forgot your password? <a href="#" class="text-[#00A8E8] hover:underline">Reset it here</a>
+            </p>
+          </div>
+          
+          <div id="signupForm" class="form-container">
+            <form id="signupFormElement">
+              <input 
+                type="email" 
+                class="form-input" 
+                placeholder="Email Address" 
+                id="signupEmail" 
+                required
+              />
+              <input 
+                type="password" 
+                class="form-input" 
+                placeholder="Password" 
+                id="signupPassword" 
+                required
+              />
+              <input 
+                type="password" 
+                class="form-input" 
+                placeholder="Confirm Password" 
+                id="confirmPassword" 
+                required
+              />
+              <button type="submit" id="signupSubmitBtn" class="submit-button">
+                Sign Up
+              </button>
+            </form>
+            <p class="text-gray-400 text-sm mt-4 text-center">
+              By signing up, you agree to our <a href="#" class="text-[#00A8E8] hover:underline">Terms of Service</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const loginButton = document.getElementById('loginButton');
+      const loginPanel = document.getElementById('loginPanel');
+      const overlay = document.getElementById('overlay');
+      const closeButton = document.getElementById('closeButton');
+      const loginTab = document.getElementById('loginTab');
+      const signupTab = document.getElementById('signupTab');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const messageContainer = document.getElementById('messageContainer');
+      
+      loginButton.addEventListener('click', () => {
+        loginPanel.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      });
+      
+      function closeLoginPanel() {
+        loginPanel.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = 'auto';
+        clearMessage();
+        resetButtons();
+      }
+      
+      closeButton.addEventListener('click', closeLoginPanel);
+      overlay.addEventListener('click', closeLoginPanel);
+      
+      loginTab.addEventListener('click', () => {
+        loginTab.classList.add('active');
+        signupTab.classList.remove('active');
+        loginForm.classList.add('active');
+        signupForm.classList.remove('active');
+        clearMessage();
+      });
+      
+      signupTab.addEventListener('click', () => {
+        signupTab.classList.add('active');
+        loginTab.classList.remove('active');
+        signupForm.classList.add('active');
+        loginForm.classList.remove('active');
+        clearMessage();
+      });
+
+      function showMessage(message, type = 'error') {
+        clearMessage();
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        messageContainer.appendChild(messageDiv);
+      }
+
+      function clearMessage() {
+        messageContainer.innerHTML = '';
+      }
+
+      function resetButtons() {
+        const loginBtn = document.getElementById('loginSubmitBtn');
+        const signupBtn = document.getElementById('signupSubmitBtn');
+        
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Sign Up';
+      }
+
+      // Simple form submission using URL parameters
+      function submitAuth(action, data) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('auth_action', action);
+        params.set('auth_data', JSON.stringify(data));
+        
+        // Navigate to the same page with auth parameters
+        window.location.href = window.location.pathname + '?' + params.toString();
+      }
+
+      document.getElementById('loginFormElement').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        
+        if (!email || !password) {
+          showMessage('Please fill in all fields');
+          return;
+        }
+        
+        const submitBtn = document.getElementById('loginSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Logging in...';
+        
+        // Add a small delay to show the loading state
+        setTimeout(() => {
+          submitAuth('login', { email, password });
+        }, 500);
+      });
+
+      document.getElementById('signupFormElement').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (!email || !password || !confirmPassword) {
+          showMessage('Please fill in all fields');
+          return;
+        }
+        
+        if (password !== confirmPassword) {
+          showMessage('Passwords do not match!');
+          return;
+        }
+        
+        const submitBtn = document.getElementById('signupSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing up...';
+        
+        // Add a small delay to show the loading state
+        setTimeout(() => {
+          submitAuth('signup', { email, password, confirmPassword });
+        }, 500);
+      });
+
+      // Handle escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && loginPanel.classList.contains('active')) {
+          closeLoginPanel();
+        }
+      });
+
+      // Check for auth result messages on page load
+      window.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        const authResult = params.get('auth_result');
+        const authMessage = params.get('auth_message');
+        
+        if (authResult && authMessage) {
+          // Show the auth panel and display the message
+          loginPanel.classList.add('active');
+          overlay.classList.add('active');
+          document.body.style.overflow = 'hidden';
+          
+          showMessage(decodeURIComponent(authMessage), authResult === 'success' ? 'success' : 'error');
+          
+          if (authResult === 'success') {
+            setTimeout(() => {
+              closeLoginPanel();
+              // Clear the URL parameters
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }, 2000);
+          } else {
+            resetButtons();
+          }
+          
+          // Clear the URL parameters after a delay
+          setTimeout(() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }, 5000);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet"
+    />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            background: #00171F;
+            color: white;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #00171F;
+            border-bottom: 1px solid #374151;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-content {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #00A8E8;
+            font-size: 1.875rem;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+        }
+
+        .welcome-text {
+            color: #D1D5DB;
+            margin-top: 0.25rem;
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #00A8E8;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+
+        .logout-btn:hover {
+            background-color: #007EA7;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 168, 232, 0.3);
+        }
+
+        main {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            flex-grow: 1;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid #374151;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .tab-indicator {
+            position: absolute;
+            bottom: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #007EA7, #00A8E8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 1px;
+        }
+
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: white;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 168, 232, 0.1), rgba(0, 126, 167, 0.2));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .tab-btn:hover::before {
+            opacity: 1;
+        }
+
+        .tab-btn:hover {
+            color: #00A8E8;
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            color: #00A8E8;
+            border-bottom-color: #00A8E8;
+            background: rgba(0, 168, 232, 0.15);
+            transform: translateY(0);
+        }
+
+        .tab-btn.active::before {
+            opacity: 1;
+        }
+
+        .panel {
+            display: none;
+            background: linear-gradient(135deg, rgba(0, 52, 89, 0.3) 0%, rgba(0, 23, 31, 0.5) 50%, rgba(0, 52, 89, 0.3) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 168, 232, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            padding: 2rem;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        h2 {
+            color: #00A8E8;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #D1D5DB;
+            margin-bottom: 0.5rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.375rem;
+            color: white;
+            transition: all 0.3s ease;
+            outline: none;
+            margin-bottom: 1rem;
+        }
+
+        /* Fix select dropdown options styling */
+        select option {
+            background-color: white;
+            color: black;
+            padding: 0.5rem;
+        }
+        
+        select option:hover {
+            background-color: #f3f4f6;
+        }
+        input:focus, select:focus {
+            border-color: #00A8E8;
+            background-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 2px rgba(0, 168, 232, 0.3);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .file-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 0.375rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .file-upload:hover {
+            border-color: #00A8E8;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-label {
+            color: #00A8E8;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .file-label:hover {
+            color: #38BDF8;
+        }
+
+        .file-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 0.5rem;
+        }
+
+        .file-name {
+            color: #00A8E8;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s duration-300;
+        }
+
+        .message.error {
+            background-color: rgba(220, 38, 38, 0.3);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #FCA5A5;
+        }
+
+        .message.success {
+            background-color: rgba(22, 163, 74, 0.3);
+            border: 1px solid rgba(22, 163, 74, 0.3);
+            color: #86EFAC;
+        }
+
+        .message.info {
+            background-color: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93C5FD;
+        }
+
+        .message-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            background-color: #00A8E8;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            background-color: #007EA7;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 168, 232, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background-color: rgba(0, 126, 167, 0.5);
+            cursor: not-allowed;
+            transform: translateY(0);
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            flex: 1;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #D1D5DB;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .filter-group select {
+            margin-bottom: 0;
+        }
+
+        .submissions-table {
+            background: rgba(0, 52, 89, 0.2);
+            border: 1px solid rgba(0, 168, 232, 0.1);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            background: rgba(0, 168, 232, 0.1);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 168, 232, 0.2);
+        }
+
+        .table-header h3 {
+            color: #00A8E8;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .table-content {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background: rgba(0, 168, 232, 0.05);
+            color: #00A8E8;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            color: white;
+        }
+
+        tr:hover {
+            background: rgba(0, 168, 232, 0.05);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-completed {
+            background-color: rgba(22, 163, 74, 0.3);
+            border: 1px solid rgba(22, 163, 74, 0.3);
+            color: #86EFAC;
+        }
+
+        .status-pending {
+            background-color: rgba(245, 158, 11, 0.3);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #FDE68A;
+        }
+
+        .status-processing {
+            background-color: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93C5FD;
+        }
+
+        .score-cell {
+            color: #00A8E8;
+            font-weight: 600;
+        }
+
+        .evaluation-results {
+            margin-top: 2rem;
+        }
+
+        .evaluation-card {
+            background: rgba(0, 52, 89, 0.3);
+            border: 1px solid rgba(0, 168, 232, 0.2);
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .evaluation-card:hover {
+            border-color: rgba(0, 168, 232, 0.4);
+            background: rgba(0, 52, 89, 0.4);
+        }
+
+        .evaluation-header {
+            padding: 1.5rem;
+            background: rgba(0, 168, 232, 0.1);
+            border-bottom: 1px solid rgba(0, 168, 232, 0.2);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .evaluation-title {
+            color: #00A8E8;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .evaluation-meta {
+            color: #D1D5DB;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .evaluation-score {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .score-badge {
+            background: linear-gradient(135deg, #00A8E8, #007EA7);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        .expand-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .evaluation-content {
+            display: none;
+            padding: 1.5rem;
+        }
+
+        .evaluation-content.expanded {
+            display: block;
+        }
+
+        .feedback-section, .analysis-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .feedback-section h4, .analysis-section h4 {
+            color: #00A8E8;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feedback-text, .analysis-text {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.6;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border-left: 3px solid #00A8E8;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #9CA3AF;
+        }
+
+        .empty-state i {
+            width: 4rem;
+            height: 4rem;
+            color: #6B7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h3 {
+            color: #D1D5DB;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text {
+            color: white;
+            margin: 0.5rem 0;
+        }
+
+        .upload-text span {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 1rem;
+            }
+            
+            main {
+                padding: 1rem;
+            }
+            
+            .tabs {
+                gap: 1rem;
+            }
+            
+            .tab-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+            
+            .filter-section {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .table-content {
+                font-size: 0.875rem;
+            }
+            
+            th, td {
+                padding: 0.75rem 1rem;
+            }
+            
+            .evaluation-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>Grade Flow</h1>
+                    <p class="welcome-text">Welcome back, John Doe</p>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">
+                    <i data-lucide="log-out"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <div class="tab-indicator" id="tabIndicator"></div>
+                <button class="tab-btn active" data-tab="submit">
+                    <i data-lucide="upload"></i>
+                    Submit Documents
+                </button>
+                <button class="tab-btn" data-tab="history">
+                    <i data-lucide="history"></i>
+                    View Submissions
+                </button>
+            </div>
+
+            <div id="submit-panel" class="panel active">
+                <h2>Submit Your Work</h2>
+                <form id="submission-form" class="submission-form">
+                    <div class="form-group">
+                        <label>Submission Type</label>
+                        <select id="submission-type">
+                            <option>Assignment</option>
+                            <option>Exam</option>
+                            <option>Test</option>
+                            <option>Project</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Course/Subject Code</label>
+                        <input type="text" id="course" placeholder="e.g., CS201">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Title/Description</label>
+                        <input type="text" id="title" placeholder="Enter title or description">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload PDF</label>
+                        <div class="file-upload" onclick="document.getElementById('file-input').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload a file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="file-input" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="file-name" class="file-name hidden"></p>
+                    </div>
+
+                    <div id="message" class="message hidden"></div>
+
+                    <button type="submit" id="submit-btn" class="submit-btn">
+                        <i data-lucide="send"></i>
+                        Submit Document
+                    </button>
+                </form>
+            </div>
+
+            <div id="history-panel" class="panel">
+                <h2>Your Submission History</h2>
+                
+                <div class="filter-section">
+                    <div class="filter-group">
+                        <label>Filter by Type</label>
+                        <select id="type-filter">
+                            <option value="All">All Types</option>
+                            <option value="Assignment">Assignment</option>
+                            <option value="Exam">Exam</option>
+                            <option value="Test">Test</option>
+                            <option value="Project">Project</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter by Status</label>
+                        <select id="status-filter">
+                            <option value="All">All Status</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="submissions-table">
+                    <div class="table-header">
+                        <h3>Submissions Overview</h3>
+                    </div>
+                    <div class="table-content">
+                        <table id="submissions-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Course</th>
+                                    <th>Submission Date</th>
+                                    <th>Status</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="submissions-tbody">
+                                <!-- Table rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="evaluation-results">
+                    <h2>Evaluation Results</h2>
+                    <div id="evaluation-cards">
+                        <!-- Evaluation cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const panels = document.querySelectorAll('.panel');
+        const submissionForm = document.getElementById('submission-form');
+        const fileInput = document.getElementById('file-input');
+        const fileName = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-btn');
+        const message = document.getElementById('message');
+        const typeFilter = document.getElementById('type-filter');
+        const statusFilter = document.getElementById('status-filter');
+        const submissionsTbody = document.getElementById('submissions-tbody');
+        const evaluationCards = document.getElementById('evaluation-cards');
+
+        // Mock data - Enhanced with more entries and evaluation data
+        const submissionHistory = [];
+
+        let filteredSubmissions = [];
+
+        // Tab indicator functionality
+        function updateTabIndicator(activeTab) {
+            const indicator = document.getElementById('tabIndicator');
+            const activeButton = document.querySelector(`[data-tab="${activeTab}"]`);
+
+            if (activeButton) {
+                const rect = activeButton.getBoundingClientRect();
+                const navRect = activeButton.parentElement.getBoundingClientRect();
+
+                indicator.style.width = rect.width + 'px';
+                indicator.style.left = (rect.left - navRect.left) + 'px';
+            }
+        }
+
+        // Tab switching
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                panels.forEach(panel => panel.classList.remove('active'));
+                
+                button.classList.add('active');
+                document.getElementById(`${button.dataset.tab}-panel`).classList.add('active');
+                
+                updateTabIndicator(button.dataset.tab);
+
+                // Refresh data when switching to history tab
+                if (button.dataset.tab === 'history') {
+                    renderSubmissionsTable();
+                    renderEvaluationResults();
+                }
+            });
+        });
+
+        // File upload handling
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                fileName.textContent = `Selected file: ${e.target.files[0].name}`;
+                fileName.classList.remove('hidden');
+            }
+        });
+
+        // Drag and drop handling
+        const fileUpload = document.querySelector('.file-upload');
+
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = '#00A8E8';
+            fileUpload.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            fileUpload.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            fileUpload.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = `Selected file: ${e.dataTransfer.files[0].name}`;
+                fileName.classList.remove('hidden');
+            }
+        });
+
+        // Form submission
+        submissionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submissionType = document.getElementById('submission-type').value;
+            const course = document.getElementById('course').value;
+            const title = document.getElementById('title').value;
+            
+            if (!fileInput.files[0] || !course || !title) {
+                showMessage('error', 'Please fill in all required fields.');
+                return;
+            }
+
+            if (fileInput.files[0].type !== 'application/pdf') {
+                showMessage('error', 'Please upload a PDF file only.');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Processing submission...';
+            lucide.createIcons();
+            
+            // Simulate submission delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Add new submission to history
+            const newSubmission = {
+                type: submissionType,
+                title: title,
+                course: course,
+                submissionDate: new Date().toISOString().split('T')[0],
+                status: 'Processing',
+                score: null,
+                feedback: null,
+                detailedAnalysis: null
+            };
+            
+            submissionHistory.unshift(newSubmission);
+            filteredSubmissions = [...submissionHistory];
+            
+            showMessage('success', 'Submission successful! Your document has been uploaded for grading. Vector store created successfully!');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i data-lucide="send"></i> Submit Document';
+            lucide.createIcons();
+            
+            // Reset form
+            submissionForm.reset();
+            fileName.textContent = '';
+            fileName.classList.add('hidden');
+        });
+
+        // Show message
+        function showMessage(type, text) {
+            message.classList.remove('hidden', 'error', 'success', 'info');
+            message.classList.add(type);
+            message.innerHTML = `
+                <div class="message-content">
+                    <i data-lucide="${type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info'}"></i>
+                    <span>${text}</span>
+                </div>
+            `;
+            lucide.createIcons();
+            
+            // Auto-hide message after 5 seconds
+            setTimeout(() => {
+                message.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Filter submissions
+        function filterSubmissions() {
+            const typeFilterValue = typeFilter.value;
+            const statusFilterValue = statusFilter.value;
+            
+            filteredSubmissions = submissionHistory.filter(submission => {
+                const typeMatch = typeFilterValue === 'All' || submission.type === typeFilterValue;
+                const statusMatch = statusFilterValue === 'All' || submission.status === statusFilterValue;
+                return typeMatch && statusMatch;
+            });
+            
+            renderSubmissionsTable();
+        }
+
+        // Render submissions table
+        function renderSubmissionsTable() {
+            if (filteredSubmissions.length === 0) {
+                submissionsTbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div style="padding: 2rem 0;">
+                                <i data-lucide="inbox" style="width: 3rem; height: 3rem; margin-bottom: 1rem;"></i>
+                                <div>No submissions found matching the selected filters.</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            submissionsTbody.innerHTML = filteredSubmissions.map(submission => `
+                <tr>
+                    <td>${submission.type}</td>
+                    <td>${submission.title}</td>
+                    <td>${submission.course}</td>
+                    <td>${new Date(submission.submissionDate).toLocaleDateString()}</td>
+                    <td>
+                        <span class="status-badge status-${submission.status.toLowerCase()}">
+                            ${submission.status}
+                        </span>
+                    </td>
+                    <td class="score-cell">
+                        ${submission.score ? `${submission.score}/100` : '—'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Render evaluation results
+        function renderEvaluationResults() {
+            const evaluatedSubmissions = submissionHistory.filter(submission => 
+                submission.status === 'Completed' && submission.score !== null
+            );
+
+            if (evaluatedSubmissions.length === 0) {
+                evaluationCards.innerHTML = `
+                    <div class="empty-state">
+                        <i data-lucide="clipboard-list"></i>
+                        <h3>No Evaluation Results</h3>
+                        <p>None of your submissions have been evaluated yet. Check back later for results.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            evaluationCards.innerHTML = evaluatedSubmissions.map((submission, index) => `
+                <div class="evaluation-card">
+                    <div class="evaluation-header" onclick="toggleEvaluation(${index})">
+                        <div>
+                            <div class="evaluation-title">${submission.type} - ${submission.title}</div>
+                            <div class="evaluation-meta">${submission.course} • Submitted on ${new Date(submission.submissionDate).toLocaleDateString()}</div>
+                        </div>
+                        <div class="evaluation-score">
+                            <div class="score-badge">${submission.score}/100</div>
+                            <i data-lucide="chevron-down" class="expand-icon" id="expand-icon-${index}"></i>
+                        </div>
+                    </div>
+                    <div class="evaluation-content" id="evaluation-content-${index}">
+                        ${submission.feedback ? `
+                            <div class="feedback-section">
+                                <h4>Feedback</h4>
+                                <div class="feedback-text">${submission.feedback}</div>
+                            </div>
+                        ` : ''}
+                        ${submission.detailedAnalysis ? `
+                            <div class="analysis-section">
+                                <h4>Detailed Analysis</h4>
+                                <div class="analysis-text">${submission.detailedAnalysis}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            lucide.createIcons();
+        }
+
+        // Toggle evaluation card expansion
+        function toggleEvaluation(index) {
+            const content = document.getElementById(`evaluation-content-${index}`);
+            const icon = document.getElementById(`expand-icon-${index}`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        }
+
+        // Add filter event listeners
+        typeFilter.addEventListener('change', filterSubmissions);
+        statusFilter.addEventListener('change', filterSubmissions);
+
+        // Logout handler
+//         function handleLogout() {
+//     if (confirm("Are you sure you want to logout?")) {
+//         // Send logout message to Streamlit
+//         sendToStreamlit({
+//             action: 'logout'
+//         });
+//     }
+// }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTabIndicator('submit');
+            renderSubmissionsTable();
+            renderEvaluationResults();
+        });
+
+        // Add resize listener to update tab indicator on window resize
+        window.addEventListener('resize', () => {
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab) {
+                updateTabIndicator(activeTab.dataset.tab);
+            }
+        });
+    </script>
+</body>
+<!-- <script>
+    // Function to send data to Streamlit
+    function sendToStreamlit(data) {
+        window.parent.postMessage({
+            type: 'streamlit:setComponentValue',
+            value: data
+        }, '*');
+    }
+
+    // Handle form submission
+    document.getElementById('submission-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const submissionType = document.getElementById('submission-type').value;
+        const course = document.getElementById('course').value;
+        const title = document.getElementById('title').value;
+        const file = document.getElementById('file-input').files[0];
+        
+        if (!file || !course || !title) {
+            showMessage('error', 'Please fill in all required fields.');
+            return;
+        }
+
+        if (file.type !== 'application/pdf') {
+            showMessage('error', 'Please upload a PDF file only.');
+            return;
+        }
+        
+        // Read the file as base64
+        const reader = new FileReader();
+        reader.onload = function() {
+            const base64File = reader.result.split(',')[1];
+            
+            // Send data to Streamlit
+            sendToStreamlit({
+                action: 'submit',
+                type: submissionType,
+                course: course,
+                title: title,
+                file: {
+                    name: file.name,
+                    type: file.type,
+                    content: base64File
+                }
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Listen for responses from Streamlit
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'streamlit:componentValue') {
+            const data = event.data.value;
+            
+            if (data.response) {
+                showMessage(data.response.type, data.response.message);
+                
+                if (data.response.type === 'success') {
+                    // Reset form on success
+                    document.getElementById('submission-form').reset();
+                    document.getElementById('file-name').textContent = '';
+                    document.getElementById('file-name').classList.add('hidden');
+                }
+            }
+        }
+    });
+</script> -->
+<script>
+    // Function to send data to Streamlit
+    function sendToStreamlit(data) {
+        window.parent.postMessage({
+            type: 'streamlit:setComponentValue',
+            value: data
+        }, '*');
+    }
+
+    // Handle logout
+    function handleLogout() {
+        if (confirm("Are you sure you want to logout?")) {
+            sendToStreamlit({
+                action: 'logout'
+            });
+        }
+    }
+
+    // Handle form submission
+    document.getElementById('submission-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const submissionType = document.getElementById('submission-type').value;
+        const course = document.getElementById('course').value;
+        const title = document.getElementById('title').value;
+        const file = document.getElementById('file-input').files[0];
+        
+        if (!file || !course || !title) {
+            showMessage('error', 'Please fill in all required fields.');
+            return;
+        }
+
+        if (file.type !== 'application/pdf') {
+            showMessage('error', 'Please upload a PDF file only.');
+            return;
+        }
+        
+        // Read the file as base64
+        const reader = new FileReader();
+        reader.onload = function() {
+            const base64File = reader.result.split(',')[1];
+            
+            // Send data to Streamlit
+            sendToStreamlit({
+                action: 'submit',
+                type: submissionType,
+                course: course,
+                title: title,
+                file: {
+                    name: file.name,
+                    type: file.type,
+                    content: base64File
+                }
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Listen for responses from Streamlit
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'streamlit:componentValue') {
+            const data = event.data.value;
+            
+            if (data.response) {
+                showMessage(data.response.type, data.response.message);
+                
+                if (data.response.type === 'success') {
+                    // Reset form on success
+                    document.getElementById('submission-form').reset();
+                    document.getElementById('file-name').textContent = '';
+                    document.getElementById('file-name').classList.add('hidden');
+                }
+            }
+        }
+    });
+</script>
+
+</html>

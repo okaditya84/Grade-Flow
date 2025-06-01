@@ -1,0 +1,926 @@
+app.py:
+
+import os
+import streamlit as st
+import streamlit.components.v1 as components
+from streamlit_javascript import st_javascript
+from auth import authenticate_user, signup_user, is_student, is_teacher
+from student_interface import show_student_interface
+from teacher_interface import show_teacher_interface
+from utils import setup_directories, load_css
+from dotenv import load_dotenv
+import time
+
+st.set_page_config(
+    page_title="Grade Flow",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+load_dotenv()
+
+def init_session_state():
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    if "user_role" not in st.session_state:
+        st.session_state.user_role = None
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = None
+    if "college_domain" not in st.session_state:
+        st.session_state.college_domain = None
+    if "view" not in st.session_state:
+        st.session_state.view = "landing"
+    if "button_clicked" not in st.session_state:
+        st.session_state.button_clicked = False
+    if "auth_tab" not in st.session_state:
+        st.session_state.auth_tab = "login"  # Track which auth form to show
+
+def main():
+    setup_directories()
+    load_css()
+    init_session_state()
+    
+    # Check for URL parameters to handle login trigger
+    try:
+        query_params = st.query_params
+        if 'login_trigger' in query_params:
+            st.session_state.view = "auth"
+            # Clear the parameter to avoid repeated triggers
+            st.query_params.clear()
+            st.rerun()
+    except Exception as e:
+        # Fallback for older Streamlit versions
+        try:
+            query_params = st.experimental_get_query_params()
+            if 'login_trigger' in query_params:
+                st.session_state.view = "auth"
+                st.experimental_set_query_params()  # Clear parameters
+                st.rerun()
+        except:
+            pass
+
+    if not st.session_state.authenticated:
+        if st.session_state.view == "landing":
+            show_landing_page()
+        elif st.session_state.view == "auth":
+            show_auth_page()
+    else:
+        if st.session_state.user_role == "student":
+            show_student_interface()
+        elif st.session_state.user_role == "teacher":
+            show_teacher_interface()
+        else:
+            st.error("Unknown user role. Please log out and try again.")
+
+        st.sidebar.title(f"Welcome, {st.session_state.user_email}")
+        if st.sidebar.button("Logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
+def show_landing_page():
+    # Hide Streamlit UI elements for a cleaner look
+    st.markdown("""
+    <style>
+        .stApp > header {visibility: hidden;}
+        .stApp > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
+        .stDecoration {display:none;}
+        div[data-testid="stToolbar"] {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Load and display the HTML
+    try:
+        with open("UI/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+        
+        # Use components.html with return value to capture button clicks
+        button_clicked = components.html(html, height=900, scrolling=False)
+        
+        # Check if login button was clicked via postMessage
+        if button_clicked == 'login_clicked':
+            st.session_state.view = "auth"
+            st.rerun()
+            
+    except FileNotFoundError:
+        st.error("Could not find UI/index.html file")
+        st.markdown("### Please ensure the UI/index.html file exists in the correct path")
+        return
+
+def show_auth_page():
+    # Add a back button
+    if st.button("← Back to Home"):
+        st.session_state.view = "landing"
+        st.rerun()
+    
+    st.title("🏫 Grade Flow 🏫")
+    st.markdown("### Namaste!")
+    st.markdown("*You are the future of India, and we are here to help you succeed!*")
+    
+    # Create tabs but use HTML forms instead of Streamlit forms
+    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+
+    with tab1:
+        st.subheader("Login")
+        
+        # Load and display login HTML form
+        try:
+            with open("UI/login.html", "r", encoding="utf-8") as f:
+                login_html = f.read()
+            
+            # Use components.html to display login form
+            login_result = components.html(login_html, height=500, scrolling=False)
+            
+            # Handle login form submission
+            if login_result and isinstance(login_result, dict):
+                if login_result.get('action') == 'login':
+                    handle_login(login_result.get('email'), login_result.get('password'))
+                elif login_result.get('action') == 'switch_to_signup':
+                    st.session_state.auth_tab = "signup"
+                    st.rerun()
+                    
+        except FileNotFoundError:
+            st.error("Could not find UI/login.html file")
+            # Fallback to original Streamlit form
+            show_original_login_form()
+
+    with tab2:
+        st.subheader("Sign Up")
+        
+        # Load and display signup HTML form
+        try:
+            with open("UI/signup.html", "r", encoding="utf-8") as f:
+                signup_html = f.read()
+            
+            # Use components.html to display signup form
+            signup_result = components.html(signup_html, height=600, scrolling=False)
+            
+            # Handle signup form submission
+            if signup_result and isinstance(signup_result, dict):
+                if signup_result.get('action') == 'signup':
+                    handle_signup(
+                        signup_result.get('email'), 
+                        signup_result.get('password'),
+                        signup_result.get('confirmPassword')
+                    )
+                elif signup_result.get('action') == 'switch_to_login':
+                    st.session_state.auth_tab = "login"
+                    st.rerun()
+                    
+        except FileNotFoundError:
+            st.error("Could not find UI/signup.html file")
+            # Fallback to original Streamlit form
+            show_original_signup_form()
+
+def handle_login(email, password):
+    """Handle login form submission from HTML form"""
+    if not email or not password:
+        st.error("Please fill in all fields")
+        return
+        
+    if authenticate_user(email, password):
+        st.session_state.authenticated = True
+        st.session_state.user_email = email
+
+        if is_student(email):
+            st.session_state.user_role = "student"
+        elif is_teacher(email):
+            st.session_state.user_role = "teacher"
+        else:
+            st.error("Invalid institutional email.")
+            st.session_state.authenticated = False
+            return
+
+        st.success("Login successful!")
+        time.sleep(1)  # Brief pause to show success message
+        st.rerun()
+    else:
+        st.error("Invalid credentials. Please try again.")
+
+def handle_signup(email, password, confirm_password):
+    """Handle signup form submission from HTML form"""
+    if not all([email, password, confirm_password]):
+        st.error("Please fill in all fields")
+        return
+        
+    if password != confirm_password:
+        st.error("Passwords do not match!")
+        return
+        
+    if not (is_student(email) or is_teacher(email)):
+        st.error("Please use your institutional email.")
+        return
+        
+    if signup_user(email, password):
+        st.success("Account created successfully! You can now login.")
+    else:
+        st.error("Email already registered or error creating account.")
+
+def show_original_login_form():
+    """Fallback original Streamlit login form"""
+    with st.form("login_form"):
+        email = st.text_input("Email Address")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+        
+        if submitted:
+            handle_login(email, password)
+
+def show_original_signup_form():
+    """Fallback original Streamlit signup form"""
+    with st.form("signup_form"):
+        new_email = st.text_input("Email Address")
+        new_password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        submitted = st.form_submit_button("Sign Up")
+        
+        if submitted:
+            handle_signup(new_email, new_password, confirm_password)
+
+if __name__ == "__main__":
+    main()
+
+
+
+app.py:
+import os
+import streamlit as st
+import streamlit.components.v1 as components
+from streamlit_javascript import st_javascript
+from auth import authenticate_user, signup_user, is_student, is_teacher
+from student_interface import show_student_interface
+from teacher_interface import show_teacher_interface
+from utils import setup_directories, load_css
+from dotenv import load_dotenv
+import time
+
+st.set_page_config(
+    page_title="Grade Flow",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+load_dotenv()
+
+def init_session_state():
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    if "user_role" not in st.session_state:
+        st.session_state.user_role = None
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = None
+    if "college_domain" not in st.session_state:
+        st.session_state.college_domain = None
+    if "view" not in st.session_state:
+        st.session_state.view = "landing"
+    if "button_clicked" not in st.session_state:
+        st.session_state.button_clicked = False
+
+def main():
+    setup_directories()
+    load_css()
+    init_session_state()
+    
+    # Check for URL parameters to handle login trigger
+    try:
+        query_params = st.query_params
+        if 'login_trigger' in query_params:
+            st.session_state.view = "auth"
+            # Clear the parameter to avoid repeated triggers
+            st.query_params.clear()
+            st.rerun()
+    except Exception as e:
+        # Fallback for older Streamlit versions
+        try:
+            query_params = st.experimental_get_query_params()
+            if 'login_trigger' in query_params:
+                st.session_state.view = "auth"
+                st.experimental_set_query_params()  # Clear parameters
+                st.rerun()
+        except:
+            pass
+
+    if not st.session_state.authenticated:
+        if st.session_state.view == "landing":
+            show_landing_page()
+        elif st.session_state.view == "auth":
+            show_auth_page()
+    else:
+        if st.session_state.user_role == "student":
+            show_student_interface()
+        elif st.session_state.user_role == "teacher":
+            show_teacher_interface()
+        else:
+            st.error("Unknown user role. Please log out and try again.")
+
+        st.sidebar.title(f"Welcome, {st.session_state.user_email}")
+        if st.sidebar.button("Logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
+def show_landing_page():
+    # Hide Streamlit UI elements for a cleaner look
+    st.markdown("""
+    <style>
+        .stApp > header {visibility: hidden;}
+        .stApp > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
+        .stDecoration {display:none;}
+        div[data-testid="stToolbar"] {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Load and display the HTML
+    try:
+        with open("UI/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+        
+        # Use components.html with return value to capture button clicks
+        button_clicked = components.html(html, height=900, scrolling=False)
+        
+        # Check if login button was clicked via postMessage
+        if button_clicked == 'login_clicked':
+            st.session_state.view = "auth"
+            st.rerun()
+            
+    except FileNotFoundError:
+        st.error("Could not find UI/index.html file")
+        st.markdown("### Please ensure the UI/index.html file exists in the correct path")
+        return
+
+def show_auth_page():
+    # Add a back button
+    if st.button("← Back to Home"):
+        st.session_state.view = "landing"
+        st.rerun()
+    
+    st.title("🏫 Grade Flow 🏫")
+    st.markdown("### Namaste!")
+    st.markdown("*You are the future of India, and we are here to help you succeed!*")
+    
+    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+
+    with tab1:
+        st.subheader("Login")
+        with st.form("login_form"):
+            email = st.text_input("Email Address")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login")
+            
+            if submitted:
+                if not email or not password:
+                    st.error("Please fill in all fields")
+                elif authenticate_user(email, password):
+                    st.session_state.authenticated = True
+                    st.session_state.user_email = email
+
+                    if is_student(email):
+                        st.session_state.user_role = "student"
+                    elif is_teacher(email):
+                        st.session_state.user_role = "teacher"
+                    else:
+                        st.error("Invalid institutional email.")
+                        st.session_state.authenticated = False
+                        return
+
+                    st.success("Login successful!")
+                    time.sleep(1)  # Brief pause to show success message
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials. Please try again.")
+
+    with tab2:
+        st.subheader("Sign Up")
+        with st.form("signup_form"):
+            new_email = st.text_input("Email Address")
+            new_password = st.text_input("Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            submitted = st.form_submit_button("Sign Up")
+            
+            if submitted:
+                if not all([new_email, new_password, confirm_password]):
+                    st.error("Please fill in all fields")
+                elif new_password != confirm_password:
+                    st.error("Passwords do not match!")
+                elif not (is_student(new_email) or is_teacher(new_email)):
+                    st.error("Please use your institutional email.")
+                elif signup_user(new_email, new_password):
+                    st.success("Account created successfully! You can now login.")
+                else:
+                    st.error("Email already registered or error creating account.")
+
+if __name__ == "__main__":
+    main()
+
+
+index.html:
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grade Flow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: 'Outfit', sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .login-btn {
+        transition: all 0.3s ease;
+        transform: translateY(0);
+      }
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 168, 232, 0.3);
+      }
+    </style>
+  </head>
+  <body class="bg-[#00171F] text-white antialiased">
+    <header class="flex justify-between items-center px-8 py-6 bg-[#00171F] sticky top-0 z-50">
+      <h1 class="text-2xl font-bold tracking-wider">Grade Flow</h1>
+      <nav class="space-x-8 text-lg">
+        <a href="#" class="hover:text-[#00A8E8]">Home</a>
+        <a href="#about" class="hover:text-[#00A8E8]">About</a>
+      </nav>
+    </header>
+
+    <section class="flex flex-col lg:flex-row items-center justify-between px-10 lg:px-24 py-20 bg-[#00171F] relative">
+      <div class="lg:w-1/2 max-w-xl mb-12 lg:mb-0">
+        <h2 class="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+          Empower Your <span class="text-[#00A8E8]">Learning</span><br />With Smart Feedback
+        </h2>
+        <p class="text-gray-300 text-lg mb-8">
+          Automate grading and deliver meaningful, personalized feedback to students. Save time, reduce errors, and elevate the education experience.
+        </p>
+
+        <!-- Native HTML button that communicates with Streamlit -->
+        <button 
+          id="loginButton"
+          class="login-btn bg-[#00A8E8] hover:bg-[#007EA7] text-white font-semibold py-3 px-8 rounded-lg text-lg transition duration-300 ease-in-out transform hover:scale-105"
+          onclick="handleLogin()"
+        >
+          Login / Sign Up
+        </button>
+      </div>
+
+      <div class="lg:w-1/2 flex justify-center">
+        <img
+          src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGVzOWxkMnVjbHd4Z3BwdjF0bG00NTI5dXV5cW84Z2Y2Ym9tcnZicyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/Q2TUxkDJBxY7KV753P/giphy.gif"
+          alt="AI Assistant Animation"
+          class="w-[360px] h-auto drop-shadow-2xl rounded-xl"
+        />
+      </div>
+    </section>
+
+    <script>
+      function handleLogin() {
+        // Send message to parent window (Streamlit)
+        window.parent.postMessage({
+          type: 'login_clicked'
+        }, '*');
+        
+        // Also try direct approach
+        if (window.parent.streamlit) {
+          window.parent.streamlit.setComponentValue('login_clicked');
+        }
+        
+        // Fallback: modify parent URL
+        try {
+          const parentUrl = new URL(window.parent.location);
+          parentUrl.searchParams.set('login_trigger', Date.now());
+          window.parent.history.pushState({}, '', parentUrl);
+          window.parent.location.reload();
+        } catch (e) {
+          // Cross-origin restrictions - try alternative
+          console.log('Trying alternative method...');
+          window.parent.postMessage('login_clicked', '*');
+        }
+      }
+    </script>
+  </body>
+</html>
+
+----------------------------
+student interfcae:
+----------------------------
+
+import os
+import streamlit as st
+import streamlit.components.v1 as components
+import pandas as pd
+from datetime import datetime
+import time
+import json
+import base64
+from utils import process_submission, create_vector_store, get_submission_history
+
+
+def show_student_interface():
+    # Hide Streamlit's default UI elements for a cleaner look
+    st.markdown("""
+        <style>
+        .stApp > header {visibility: hidden;}
+        .stApp > div > div > div > div > section > div {padding-top: 0rem;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # Load the HTML file
+    html_file_path = os.path.join("UI", "student-dashboard-integrated.html")
+    
+    if not os.path.exists(html_file_path):
+        st.error("HTML file not found. Please ensure 'student-dashboard-integrated.html' is in the 'UI' folder.")
+        return
+    
+    # Read the HTML content
+    with open(html_file_path, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    # Get submission history for the student
+    submissions = get_submission_history(st.session_state.get('user_email', 'test@example.com'))
+    
+    # Convert submissions to JSON for JavaScript
+    submissions_json = json.dumps(submissions) if submissions else json.dumps([])
+    
+    # Inject submission data and Streamlit communication into the HTML
+    modified_html = inject_streamlit_integration(html_content, submissions_json)
+    
+    # Render the HTML with full height
+    components.html(modified_html, height=800, scrolling=True)
+    
+    # Handle form submissions through Streamlit session state
+    handle_form_submissions()
+
+
+def inject_streamlit_integration(html_content, submissions_json):
+    """Inject Streamlit integration code into the HTML"""
+    
+    # JavaScript code to handle Streamlit communication
+    streamlit_integration = f"""
+    <script>
+        // Submission history data from Streamlit
+        const submissionHistory = {submissions_json};
+        
+        // Function to send data to Streamlit
+        function sendToStreamlit(data) {{
+            // Use Streamlit's built-in communication
+            if (window.parent && window.parent.postMessage) {{
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: data
+                }}, '*');
+            }}
+        }}
+        
+        // Override the form submission function
+        const originalSubmissionHandler = submissionForm?.addEventListener;
+        
+        // Enhanced form submission
+        async function handleStreamlitSubmission(e) {{
+            e.preventDefault();
+            
+            const submissionType = document.getElementById('submission-type').value;
+            const course = document.getElementById('course').value;
+            const title = document.getElementById('title').value;
+            const fileInput = document.getElementById('file-input');
+            
+            if (!fileInput.files[0] || !course || !title) {{
+                showMessage('error', 'Please fill in all required fields.');
+                return;
+            }}
+
+            if (fileInput.files[0].type !== 'application/pdf') {{
+                showMessage('error', 'Please upload a PDF file only.');
+                return;
+            }}
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Submitting...';
+            lucide.createIcons();
+            
+            // Convert file to base64 for transmission to Streamlit
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {{
+                const fileData = {{
+                    type: 'form_submission',
+                    data: {{
+                        submission_type: submissionType,
+                        course: course,
+                        title: title,
+                        file_content: e.target.result.split(',')[1], // Remove data:application/pdf;base64, prefix
+                        file_name: file.name,
+                        file_size: file.size
+                    }}
+                }};
+                
+                // Send to Streamlit
+                sendToStreamlit(fileData);
+                
+                // Show success message (this will be updated by Streamlit response)
+                setTimeout(() => {{
+                    showMessage('success', 'Submission sent to server for processing...');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i data-lucide="send"></i> Submit Document';
+                    lucide.createIcons();
+                }}, 1000);
+            }};
+            
+            reader.readAsDataURL(file);
+        }}
+        
+        // Override the original form submission when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {{
+            const form = document.getElementById('submission-form');
+            if (form) {{
+                // Remove existing event listeners
+                form.removeEventListener('submit', handleStreamlitSubmission);
+                // Add new handler
+                form.addEventListener('submit', handleStreamlitSubmission);
+            }}
+            
+            // Update history with real data
+            updateHistoryWithStreamlitData();
+        }});
+        
+        // Function to update history with Streamlit data
+        function updateHistoryWithStreamlitData() {{
+            if (submissionHistory && submissionHistory.length > 0) {{
+                const historyList = document.getElementById('history-list');
+                if (historyList) {{
+                    renderHistoryFromStreamlit(submissionHistory);
+                }}
+            }}
+        }}
+        
+        // Render history with actual Streamlit data
+        function renderHistoryFromStreamlit(submissions) {{
+            const historyList = document.getElementById('history-list');
+            
+            if (submissions.length === 0) {{
+                historyList.innerHTML = `
+                    <div class="empty-state">
+                        <i data-lucide="inbox" style="width: 4rem; height: 4rem;"></i>
+                        <h3>No submissions yet</h3>
+                        <p>Your submission history will appear here once you submit your first document.</p>
+                    </div>
+                `;
+            }} else {{
+                historyList.innerHTML = submissions.map(submission => `
+                    <div class="history-item">
+                        <div class="history-header">
+                            <div>
+                                <h3 class="history-title">${{submission.Title || submission.title}}</h3>
+                                <p class="history-meta">
+                                    ${{submission.Course || submission.course}} - ${{submission.Type || submission.type}}<br>
+                                    Submitted on ${{new Date(submission['Submission Date'] || submission.submission_date).toLocaleDateString()}}
+                                </p>
+                            </div>
+                            <div style="text-align: right">
+                                <span class="status-badge">${{submission['Evaluation Status'] || submission.status || 'Pending'}}</span>
+                                ${{submission.Score || submission.score ? `
+                                    <p class="score">${{submission.Score || submission.score}}/100</p>
+                                ` : ''}}
+                            </div>
+                        </div>
+                        ${{submission.Feedback || submission.feedback ? `
+                            <div class="feedback">
+                                <p class="feedback-label">Feedback:</p>
+                                <p class="feedback-text">${{submission.Feedback || submission.feedback}}</p>
+                            </div>
+                        ` : ''}}
+                    </div>
+                `).join('');
+            }}
+            
+            lucide.createIcons();
+        }}
+        
+        // Handle logout
+        function handleLogout() {{
+            if (confirm("Are you sure you want to logout?")) {{
+                sendToStreamlit({{
+                    type: 'logout',
+                    data: {{}}
+                }});
+            }}
+        }}
+    </script>
+    """
+    
+    # Insert the integration script before the closing body tag
+    modified_html = html_content.replace('</body>', streamlit_integration + '</body>')
+    
+    return modified_html
+
+
+def handle_form_submissions():
+    """Handle form submissions from the HTML interface"""
+    
+    # Check if there's form data from the HTML interface
+    if 'form_data' in st.session_state:
+        form_data = st.session_state.form_data
+        
+        if form_data.get('type') == 'form_submission':
+            data = form_data.get('data', {})
+            
+            # Decode the base64 file content
+            try:
+                file_content = base64.b64decode(data.get('file_content', ''))
+                
+                # Create a temporary file-like object
+                from io import BytesIO
+                file_obj = BytesIO(file_content)
+                file_obj.name = data.get('file_name', 'uploaded_file.pdf')
+                
+                # Process the submission
+                success, message = process_submission(
+                    file_obj,
+                    data.get('submission_type', '').lower(),
+                    data.get('course', ''),
+                    data.get('title', ''),
+                    st.session_state.get('user_email', 'test@example.com'),
+                )
+                
+                # Create vector store for the document
+                if success:
+                    vector_store_success = create_vector_store(
+                        st.session_state.get('user_email', 'test@example.com'),
+                        data.get('submission_type', '').lower(),
+                        data.get('course', ''),
+                        data.get('title', '')
+                    )
+                    
+                    if vector_store_success:
+                        st.success(f"{message} Vector store created successfully!")
+                    else:
+                        st.warning(f"{message} However, there was an issue creating the vector store.")
+                else:
+                    st.error(message)
+                    
+            except Exception as e:
+                st.error(f"Error processing submission: {str(e)}")
+            
+            # Clear the form data
+            del st.session_state.form_data
+            st.rerun()
+        
+        elif form_data.get('type') == 'logout':
+            # Handle logout
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
+
+# Component value handler for receiving data from HTML
+def component_value_handler():
+    """Handle values sent from the HTML component"""
+    if hasattr(st, '_get_query_params'):
+        # This is a placeholder for handling component values
+        # Streamlit's component communication will populate this
+        pass
+
+
+# Alternative function if you want to use the original Streamlit interface as fallback
+def show_streamlit_fallback():
+    """Fallback to original Streamlit interface if HTML integration fails"""
+    st.title("Student Dashboard")
+
+    # Create tabs for different student functionalities
+    tab1, tab2 = st.tabs(["Submit Documents", "View Submissions"])
+
+    with tab1:
+        show_submission_interface()
+
+    with tab2:
+        show_submission_history()
+
+
+def show_submission_interface():
+    st.header("Submit Your Work")
+
+    # Select submission type
+    submission_type = st.selectbox(
+        "Select Submission Type", ["Assignment", "Exam", "Test", "Project"]
+    )
+
+    # Course/Subject information
+    course = st.text_input("Course/Subject Code")
+
+    # Add title/description
+    title = st.text_input(f"{submission_type} Title/Description")
+
+    # File uploader for PDF
+    uploaded_file = st.file_uploader("Upload your answer sheet (PDF)", type="pdf")
+
+    if st.button("Submit"):
+        if not uploaded_file:
+            st.error("Please upload a PDF file.")
+            return
+
+        if not course or not title:
+            st.error("Please fill in all the required fields.")
+            return
+
+        # Show a progress indicator
+        with st.spinner(f"Processing your {submission_type.lower()}..."):
+            # Process the submission
+            success, message = process_submission(
+                uploaded_file,
+                submission_type.lower(),
+                course,
+                title,
+                st.session_state.get('user_email', 'test@example.com'),
+            )
+
+            # Create vector store for the document
+            if success:
+                vector_store_success = create_vector_store(
+                    st.session_state.get('user_email', 'test@example.com'), 
+                    submission_type.lower(), 
+                    course, 
+                    title
+                )
+
+                if vector_store_success:
+                    st.success(f"{message} Vector store created successfully!")
+                else:
+                    st.warning(
+                        f"{message} However, there was an issue creating the vector store."
+                    )
+            else:
+                st.error(message)
+
+
+def show_submission_history():
+    st.header("Your Submission History")
+
+    # Get submission history
+    submissions = get_submission_history(st.session_state.get('user_email', 'test@example.com'))
+
+    if not submissions:
+        st.info("You haven't made any submissions yet.")
+        return
+
+    # Create a DataFrame from submission history
+    df = pd.DataFrame(submissions)
+
+    # Display the DataFrame with some styling
+    st.dataframe(
+        df.style.format({"Submission Date": lambda x: x.split(" ")[0]}),
+        use_container_width=True,
+    )
+
+    # Allow filtering by submission type
+    submission_type_filter = st.selectbox(
+        "Filter by Type", ["All"] + sorted(df["Type"].unique().tolist())
+    )
+
+    if submission_type_filter != "All":
+        filtered_df = df[df["Type"] == submission_type_filter]
+        st.dataframe(
+            filtered_df.style.format({"Submission Date": lambda x: x.split(" ")[0]}),
+            use_container_width=True,
+        )
+
+    # Show evaluation results if available
+    st.subheader("Evaluation Results")
+
+    evaluated_submissions = [
+        s for s in submissions if s.get("Evaluation Status") == "Completed"
+    ]
+
+    if not evaluated_submissions:
+        st.info("None of your submissions have been evaluated yet.")
+        return
+
+    for submission in evaluated_submissions:
+        with st.expander(
+            f"{submission['Type']} - {submission['Title']} ({submission['Course']})"
+        ):
+            if "Score" in submission:
+                st.metric("Score", f"{submission['Score']}/100")
+
+            if "Feedback" in submission:
+                st.markdown("### Feedback")
+                st.write(submission["Feedback"])
+
+            if "Detailed Analysis" in submission:
+                st.markdown("### Detailed Analysis")
+                st.write(submission["Detailed Analysis"])

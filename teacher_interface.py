@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utils import get_student_submissions, save_evaluation_criteria
 from evaluation import evaluate_submissions
-
+from streamlit.components.v1 import html
 
 def show_teacher_interface():
     st.title("Teacher Dashboard")

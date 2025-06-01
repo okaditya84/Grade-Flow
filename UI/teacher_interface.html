@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet"
+    />
+    <style>
+        /* Base styles for all elements, consistent with student_interface.html */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            background: #00171F; /* Darkest blue from palette */
+            color: #E0E0E0; /* Off-white for better readability */
+            line-height: 1.6;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header styles */
+        header {
+            background-color: #00171F; /* Darkest blue from palette */
+            border-bottom: 1px solid #003459; /* Dark blue for a subtle separator */
+            padding: 1.25rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-content {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #00A8E8; /* Light blue from palette */
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-shadow: 0 2px 5px rgba(0, 168, 232, 0.2);
+        }
+
+        .welcome-text {
+            color: #A0A0A0; /* Lighter grey for secondary text */
+            margin-top: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        /* Logout button styles */
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.75rem;
+            background: linear-gradient(135deg, #00A8E8, #007EA7); /* Gradient background */
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #007EA7, #00A8E8);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 168, 232, 0.4);
+        }
+
+        /* Main content area */
+        main {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+            flex-grow: 1;
+        }
+
+        /* Tabs navigation styles */
+        .tabs {
+            display: flex;
+            gap: 2.5rem;
+            border-bottom: 1px solid #003459;
+            margin-bottom: 2.5rem;
+            position: relative;
+            flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
+        }
+
+        .tab-indicator {
+            position: absolute;
+            bottom: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #007EA7, #00A8E8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 1.5px;
+        }
+
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.9rem 1.7rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #A0A0A0;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.05rem;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .tab-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 168, 232, 0.05), rgba(0, 126, 167, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .tab-btn:hover::before {
+            opacity: 1;
+        }
+
+        .tab-btn:hover {
+            color: #00A8E8;
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            color: #00A8E8;
+            border-bottom-color: #00A8E8;
+            background: rgba(0, 168, 232, 0.1);
+            transform: translateY(0);
+            box-shadow: 0 -2px 10px rgba(0, 168, 232, 0.1);
+        }
+
+        .tab-btn.active::before {
+            opacity: 1;
+        }
+
+        /* Panel styles (content sections) */
+        .panel {
+            display: none;
+            background: linear-gradient(135deg, #003459 0%, #00171F 100%);
+            backdrop-filter: blur(15px);
+            border: 1px solid #007EA7;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            border-radius: 1.25rem;
+            padding: 2.5rem;
+        }
+
+        .panel.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            color: #00A8E8;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 2.5rem;
+            text-shadow: 0 1px 3px rgba(0, 168, 232, 0.1);
+        }
+
+        /* Form group styles */
+        .form-group {
+            margin-bottom: 1.75rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #E0E0E0;
+            margin-bottom: 0.6rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            background-color: rgba(0, 52, 89, 0.4);
+            border: 1px solid #007EA7;
+            border-radius: 0.5rem;
+            color: white;
+            transition: all 0.3s ease;
+            outline: none;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            resize: vertical; /* Allow vertical resizing for textarea */
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: #00A8E8;
+            background-color: rgba(0, 52, 89, 0.6);
+            box-shadow: 0 0 0 3px rgba(0, 168, 232, 0.4);
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #A0A0A0;
+        }
+
+        /* File upload area styles */
+        .file-upload {
+            border: 2px dashed #007EA7;
+            border-radius: 0.75rem;
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(0, 52, 89, 0.2);
+        }
+
+        .file-upload:hover {
+            border-color: #00A8E8;
+            background-color: rgba(0, 52, 89, 0.3);
+            box-shadow: 0 0 15px rgba(0, 168, 232, 0.2);
+        }
+
+        .file-label {
+            color: #00A8E8;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .file-label:hover {
+            color: #38BDF8;
+            text-decoration: underline;
+        }
+
+        .file-hint {
+            font-size: 0.85rem;
+            color: #A0A0A0;
+            margin-top: 0.6rem;
+        }
+
+        .file-name {
+            color: #00A8E8;
+            margin-top: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Message box styles (error, success, info) */
+        .message {
+            padding: 1.2rem;
+            border-radius: 0.6rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .message.error {
+            background-color: rgba(220, 38, 38, 0.2);
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            color: #FCA5A5;
+        }
+
+        .message.success {
+            background-color: rgba(22, 163, 74, 0.2);
+            border: 1px solid rgba(22, 163, 74, 0.5);
+            color: #86EFAC;
+        }
+
+        .message.info {
+            background-color: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #93C5FD;
+        }
+
+        .message-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Evaluate button styles */
+        .evaluate-btn {
+            width: 100%;
+            padding: 0.9rem 1.75rem;
+            background: linear-gradient(135deg, #00A8E8, #007EA7);
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            font-size: 1.05rem;
+            margin-top: 2rem; /* Space above the button */
+        }
+
+        .evaluate-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #007EA7, #00A8E8);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 168, 232, 0.4);
+        }
+
+        .evaluate-btn:disabled {
+            background: #003459;
+            color: #A0A0A0;
+            cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Submissions table styles */
+        .submissions-table {
+            background: #003459;
+            border: 1px solid #007EA7;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            margin-top: 2rem; /* Space above the table */
+            margin-bottom: 2.5rem;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-header {
+            background: rgba(0, 168, 232, 0.15);
+            padding: 1.25rem 1.75rem;
+            border-bottom: 1px solid #007EA7;
+        }
+
+        .table-header h3 {
+            color: #00A8E8;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .table-content {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem 1.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background: rgba(0, 168, 232, 0.08);
+            color: #00A8E8;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        td {
+            color: #E0E0E0;
+        }
+
+        tr:hover {
+            background: rgba(0, 168, 232, 0.05);
+        }
+
+        /* Status badge styles */
+        .status-badge {
+            display: inline-flex;
+            padding: 0.35rem 0.9rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .status-completed {
+            background-color: rgba(22, 163, 74, 0.25);
+            border: 1px solid rgba(22, 163, 74, 0.6);
+            color: #86EFAC;
+        }
+
+        .status-pending {
+            background-color: rgba(245, 158, 11, 0.25);
+            border: 1px solid rgba(245, 158, 11, 0.6);
+            color: #FDE68A;
+        }
+
+        .status-processing {
+            background-color: rgba(59, 130, 246, 0.25);
+            border: 1px solid rgba(59, 130, 246, 0.6);
+            color: #93C5FD;
+        }
+
+        .score-cell {
+            color: #00A8E8;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        /* Evaluation results section */
+        .evaluation-results {
+            margin-top: 2.5rem;
+        }
+
+        .evaluation-card {
+            background: #003459;
+            border: 1px solid #007EA7;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .evaluation-card:hover {
+            border-color: #00A8E8;
+            background: #003F6B;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .evaluation-header {
+            padding: 1.5rem 1.75rem;
+            background: rgba(0, 168, 232, 0.1);
+            border-bottom: 1px solid rgba(0, 168, 232, 0.2);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .evaluation-title {
+            color: #00A8E8;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .evaluation-meta {
+            color: #A0A0A0;
+            font-size: 0.9rem;
+            margin-top: 0.3rem;
+        }
+
+        .evaluation-score {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .score-badge {
+            background: linear-gradient(135deg, #00A8E8, #007EA7);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.6rem;
+            font-weight: 700;
+            font-size: 1.35rem;
+            box-shadow: 0 3px 10px rgba(0, 168, 232, 0.3);
+        }
+
+        .expand-icon {
+            transition: transform 0.3s ease;
+            color: #00A8E8;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .evaluation-content {
+            display: none;
+            padding: 1.75rem;
+            font-size: 0.95rem;
+            color: #E0E0E0;
+        }
+
+        .evaluation-content.expanded {
+            display: block;
+            animation: slideDown 0.4s ease-out forwards;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .feedback-section, .analysis-section {
+            margin-bottom: 1.75rem;
+        }
+
+        .feedback-section h4, .analysis-section h4 {
+            color: #00A8E8;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+        }
+
+        .feedback-text, .analysis-text {
+            color: #E0E0E0;
+            line-height: 1.7;
+            background: rgba(0, 52, 89, 0.3);
+            padding: 1.2rem;
+            border-radius: 0.6rem;
+            border-left: 4px solid #00A8E8;
+            box-shadow: inset 0 0 10px rgba(0, 168, 232, 0.05);
+        }
+
+        /* Empty state styles */
+        .empty-state {
+            text-align: center;
+            padding: 5rem 2rem;
+            color: #A0A0A0;
+        }
+
+        .empty-state i {
+            width: 5rem;
+            height: 5rem;
+            color: rgba(0, 168, 232, 0.6);
+            margin-bottom: 1.75rem;
+        }
+
+        .empty-state h3 {
+            color: #E0E0E0;
+            font-size: 1.4rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .upload-text {
+            color: #E0E0E0;
+            margin: 0.6rem 0;
+            font-size: 1rem;
+        }
+
+        .upload-text span {
+            color: #A0A0A0;
+        }
+
+        /* Modal styles for confirmation */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #003459;
+            margin: auto;
+            padding: 2.5rem;
+            border: 1px solid #007EA7;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            text-align: center;
+            animation: zoomIn 0.3s ease-out forwards;
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-content h3 {
+            color: white;
+            margin-bottom: 1.5rem;
+            font-size: 1.35rem;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-top: 2rem;
+        }
+
+        .modal-btn {
+            padding: 0.8rem 1.6rem;
+            border: none;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .modal-btn.confirm {
+            background-color: #00A8E8;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 168, 232, 0.3);
+        }
+
+        .modal-btn.confirm:hover {
+            background-color: #007EA7;
+            transform: translateY(-2px);
+        }
+
+        .modal-btn.cancel {
+            background-color: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-btn.cancel:hover {
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        /* Download button specific styles */
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #007EA7; /* Medium blue */
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none; /* For anchor tag */
+            margin-top: 1.5rem;
+        }
+
+        .download-btn:hover {
+            background-color: #00A8E8; /* Light blue on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 168, 232, 0.3);
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+            
+            h1 {
+                font-size: 1.7rem;
+            }
+
+            .logout-btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+            
+            main {
+                padding: 1.5rem 1rem;
+            }
+            
+            .tabs {
+                gap: 0.75rem;
+            }
+            
+            .tab-btn {
+                padding: 0.7rem 1.2rem;
+                font-size: 0.9rem;
+            }
+            
+            .filter-section {
+                flex-direction: column;
+                gap: 1.2rem;
+            }
+            
+            .table-content {
+                font-size: 0.85rem;
+            }
+            
+            th, td {
+                padding: 0.8rem 1.2rem;
+            }
+            
+            .evaluation-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 1.2rem 1.5rem;
+            }
+
+            .evaluation-title {
+                font-size: 1.1rem;
+            }
+
+            .score-badge {
+                font-size: 1.1rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .evaluation-content {
+                padding: 1.5rem;
+            }
+
+            .empty-state i {
+                width: 4rem;
+                height: 4rem;
+            }
+
+            .empty-state h3 {
+                font-size: 1.1rem;
+            }
+
+            .modal-content {
+                padding: 1.8rem;
+            }
+
+            .modal-content h3 {
+                font-size: 1.1rem;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+                gap: 0.8rem;
+            }
+
+            .modal-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>Grade Flow - Teacher</h1>
+                    <p class="welcome-text">Welcome back, Professor Smith</p>
+                </div>
+                <button class="logout-btn" onclick="showLogoutModal()">
+                    <i data-lucide="log-out"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <div class="tab-indicator" id="tabIndicator"></div>
+                <button class="tab-btn active" data-tab="test">
+                    <i data-lucide="clipboard-check"></i>
+                    Evaluate Tests
+                </button>
+                <button class="tab-btn" data-tab="assignment">
+                    <i data-lucide="book-open"></i>
+                    Evaluate Assignments
+                </button>
+                <button class="tab-btn" data-tab="exam">
+                    <i data-lucide="award"></i>
+                    Evaluate Exams
+                </button>
+                <button class="tab-btn" data-tab="project">
+                    <i data-lucide="layers"></i>
+                    Evaluate Projects
+                </button>
+            </div>
+
+            <div id="test-panel" class="panel active">
+                <h2 id="panel-title-test">Evaluate Tests</h2>
+                <form id="evaluation-form-test" class="evaluation-form">
+                    <div class="form-group">
+                        <label for="course-test">Course Code</label>
+                        <input type="text" id="course-test" placeholder="e.g., MA101">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Question Paper (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('question-paper-test').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="question-paper-test" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="question-paper-name-test" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Model Answer (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('model-answer-test').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="model-answer-test" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="model-answer-name-test" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="criteria-test">Evaluation Criteria</label>
+                        <textarea id="criteria-test" rows="8"></textarea>
+                    </div>
+
+                    <div id="message-test" class="message hidden"></div>
+
+                    <h3 style="color: #00A8E8; margin-bottom: 1rem;">Student Submissions</h3>
+                    <div class="submissions-table">
+                        <div class="table-content">
+                            <table id="student-submissions-table-test">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Submission Title</th>
+                                        <th>Submission Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-submissions-tbody-test">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="evaluate-btn-test" class="evaluate-btn">
+                        <i data-lucide="play-circle"></i>
+                        Evaluate Tests
+                    </button>
+
+                    <div class="evaluation-results" id="evaluation-results-test">
+                        </div>
+                </form>
+            </div>
+
+            <div id="assignment-panel" class="panel">
+                <h2 id="panel-title-assignment">Evaluate Assignments</h2>
+                <form id="evaluation-form-assignment" class="evaluation-form">
+                    <div class="form-group">
+                        <label for="course-assignment">Course Code</label>
+                        <input type="text" id="course-assignment" placeholder="e.g., CS201">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Question Paper (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('question-paper-assignment').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="question-paper-assignment" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="question-paper-name-assignment" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Model Answer (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('model-answer-assignment').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="model-answer-assignment" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="model-answer-name-assignment" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="criteria-assignment">Evaluation Criteria</label>
+                        <textarea id="criteria-assignment" rows="8"></textarea>
+                    </div>
+
+                    <div id="message-assignment" class="message hidden"></div>
+
+                    <h3 style="color: #00A8E8; margin-bottom: 1rem;">Student Submissions</h3>
+                    <div class="submissions-table">
+                        <div class="table-content">
+                            <table id="student-submissions-table-assignment">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Submission Title</th>
+                                        <th>Submission Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-submissions-tbody-assignment">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="evaluate-btn-assignment" class="evaluate-btn">
+                        <i data-lucide="play-circle"></i>
+                        Evaluate Assignments
+                    </button>
+
+                    <div class="evaluation-results" id="evaluation-results-assignment">
+                        </div>
+                </form>
+            </div>
+
+            <div id="exam-panel" class="panel">
+                <h2 id="panel-title-exam">Evaluate Exams</h2>
+                <form id="evaluation-form-exam" class="evaluation-form">
+                    <div class="form-group">
+                        <label for="course-exam">Course Code</label>
+                        <input type="text" id="course-exam" placeholder="e.g., PH201">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Question Paper (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('question-paper-exam').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="question-paper-exam" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="question-paper-name-exam" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Model Answer (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('model-answer-exam').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="model-answer-exam" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="model-answer-name-exam" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="criteria-exam">Evaluation Criteria</label>
+                        <textarea id="criteria-exam" rows="8"></textarea>
+                    </div>
+
+                    <div id="message-exam" class="message hidden"></div>
+
+                    <h3 style="color: #00A8E8; margin-bottom: 1rem;">Student Submissions</h3>
+                    <div class="submissions-table">
+                        <div class="table-content">
+                            <table id="student-submissions-table-exam">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Submission Title</th>
+                                        <th>Submission Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-submissions-tbody-exam">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="evaluate-btn-exam" class="evaluate-btn">
+                        <i data-lucide="play-circle"></i>
+                        Evaluate Exams
+                    </button>
+
+                    <div class="evaluation-results" id="evaluation-results-exam">
+                        </div>
+                </form>
+            </div>
+
+            <div id="project-panel" class="panel">
+                <h2 id="panel-title-project">Evaluate Projects</h2>
+                <form id="evaluation-form-project" class="evaluation-form">
+                    <div class="form-group">
+                        <label for="course-project">Course Code</label>
+                        <input type="text" id="course-project" placeholder="e.g., ENG400">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Question Paper (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('question-paper-project').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="question-paper-project" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="question-paper-name-project" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Model Answer (PDF)</label>
+                        <div class="file-upload" onclick="document.getElementById('model-answer-project').click()">
+                            <i data-lucide="file-text" style="width: 48px; height: 48px; color: #00A8E8; margin-bottom: 0.5rem;"></i>
+                            <div class="upload-text">
+                                <span class="file-label">Upload file</span>
+                                <span> or drag and drop</span>
+                            </div>
+                            <p class="file-hint">PDF up to 10MB</p>
+                            <input type="file" id="model-answer-project" accept=".pdf" class="hidden">
+                        </div>
+                        <p id="model-answer-name-project" class="file-name hidden"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="criteria-project">Evaluation Criteria</label>
+                        <textarea id="criteria-project" rows="8"></textarea>
+                    </div>
+
+                    <div id="message-project" class="message hidden"></div>
+
+                    <h3 style="color: #00A8E8; margin-bottom: 1rem;">Student Submissions</h3>
+                    <div class="submissions-table">
+                        <div class="table-content">
+                            <table id="student-submissions-table-project">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Submission Title</th>
+                                        <th>Submission Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-submissions-tbody-project">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="evaluate-btn-project" class="evaluate-btn">
+                        <i data-lucide="play-circle"></i>
+                        Evaluate Projects
+                    </button>
+
+                    <div class="evaluation-results" id="evaluation-results-project">
+                        </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <h3>Are you sure you want to logout?</h3>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="confirmLogoutBtn">Yes, Logout</button>
+                <button class="modal-btn cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const panels = document.querySelectorAll('.panel');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        // Default evaluation criteria for different submission types
+        const defaultCriteria = {
+            test: `Evaluation Criteria for Tests:
+1. Correctness: 60 points - Answer matches the expected solution
+2. Completeness: 20 points - All parts of the question are addressed
+3. Clarity: 10 points - Clear explanation of steps and reasoning
+4. Presentation: 10 points - Neat and well-organized
+For complex problems worth more marks, prioritize understanding of concepts over minor calculation errors. For simpler problems (1-2 marks), focus on the final answer being correct.`,
+            assignment: `Evaluation Criteria for Assignments:
+1. Understanding: 30 points - Demonstrates grasp of concepts and theories
+2. Application: 30 points - Correctly applies concepts to problems
+3. Research & Sources: 20 points - Quality and relevance of external information
+4. Structure & Clarity: 10 points - Logical flow and clear expression
+5. Formatting & Presentation: 10 points - Adherence to guidelines and neatness`,
+            exam: `Evaluation Criteria for Exams:
+1. Accuracy: 50 points - Precision and correctness of answers
+2. Depth of Knowledge: 25 points - Comprehensive understanding of topics
+3. Problem Solving: 15 points - Effectiveness in solving complex problems
+4. Time Management: 10 points - Ability to complete within given time (indirectly assessed by completeness)`,
+            project: `Evaluation Criteria for Projects:
+1. Functionality: 30 points - Project meets all specified requirements and works as intended
+2. Design & Architecture: 25 points - Quality of design, scalability, and maintainability
+3. Innovation & Creativity: 20 points - Originality and novel approaches
+4. Documentation: 15 points - Clarity and completeness of project documentation
+5. Presentation: 10 points - Effectiveness of demonstration and explanation`
+        };
+
+        // Mock student submissions data
+const mockStudentSubmissions = {
+    test: [],
+    assignment: [],
+    exam: [],
+    project: []
+};
+
+        // Function to get elements specific to a submission type
+        function getElements(type) {
+            return {
+                panel: document.getElementById(`${type}-panel`),
+                courseInput: document.getElementById(`course-${type}`),
+                questionPaperInput: document.getElementById(`question-paper-${type}`),
+                questionPaperName: document.getElementById(`question-paper-name-${type}`),
+                modelAnswerInput: document.getElementById(`model-answer-${type}`),
+                modelAnswerName: document.getElementById(`model-answer-name-${type}`),
+                criteriaTextarea: document.getElementById(`criteria-${type}`),
+                messageDiv: document.getElementById(`message-${type}`),
+                studentSubmissionsTbody: document.getElementById(`student-submissions-tbody-${type}`),
+                evaluateBtn: document.getElementById(`evaluate-btn-${type}`),
+                evaluationResultsDiv: document.getElementById(`evaluation-results-${type}`)
+            };
+        }
+
+        // Tab indicator functionality
+        function updateTabIndicator(activeTab) {
+            const indicator = document.getElementById('tabIndicator');
+            const activeButton = document.querySelector(`[data-tab="${activeTab}"]`);
+
+            if (activeButton) {
+                const rect = activeButton.getBoundingClientRect();
+                const navRect = activeButton.parentElement.getBoundingClientRect();
+
+                indicator.style.width = rect.width + 'px';
+                indicator.style.left = (rect.left - navRect.left) + 'px';
+            }
+        }
+
+        // Tab switching logic
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const selectedTab = button.dataset.tab;
+
+                // Remove active class from all tabs and panels
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                panels.forEach(panel => panel.classList.remove('active'));
+                
+                // Add active class to the clicked tab and corresponding panel
+                button.classList.add('active');
+                document.getElementById(`${selectedTab}-panel`).classList.add('active');
+                
+                // Update the tab indicator position
+                updateTabIndicator(selectedTab);
+
+                // Load default criteria and student submissions for the active tab
+                loadTabContent(selectedTab);
+            });
+        });
+
+        // Function to load content for the active tab
+        function loadTabContent(type) {
+            const elements = getElements(type);
+            elements.criteriaTextarea.value = defaultCriteria[type];
+            renderStudentSubmissions(type);
+            renderEvaluationResults(type);
+        }
+
+        // File upload handling
+        function setupFileUpload(type) {
+            const questionPaperInput = document.getElementById(`question-paper-${type}`);
+            const questionPaperName = document.getElementById(`question-paper-name-${type}`);
+            const modelAnswerInput = document.getElementById(`model-answer-${type}`);
+            const modelAnswerName = document.getElementById(`model-answer-name-${type}`);
+
+            questionPaperInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    questionPaperName.textContent = `Selected: ${e.target.files[0].name}`;
+                    questionPaperName.classList.remove('hidden');
+                } else {
+                    questionPaperName.textContent = '';
+                    questionPaperName.classList.add('hidden');
+                }
+            });
+
+            modelAnswerInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    modelAnswerName.textContent = `Selected: ${e.target.files[0].name}`;
+                    modelAnswerName.classList.remove('hidden');
+                } else {
+                    modelAnswerName.textContent = '';
+                    modelAnswerName.classList.add('hidden');
+                }
+            });
+        }
+
+        // Render student submissions table
+        function 
+renderStudentSubmissions(type) {
+    const elements = getElements(type);
+    elements.studentSubmissionsTbody.innerHTML = `
+        <tr>
+            <td colspan="5" class="empty-state">
+                <i data-lucide="inbox" style="width: 3rem; height: 3rem; margin-bottom: 1rem;"></i>
+                <h3>No student submissions found for this type.</h3>
+                <p>Students need to submit documents for evaluation.</p>
+            </td>
+        </tr>
+    `;
+    lucide.createIcons();
+}
+    
+
+        // Simulate file download
+        function downloadMockFile(filename) {
+            showMessageForType(document.querySelector('.tab-btn.active').dataset.tab, 'info', `Simulating download for: ${filename}`);
+            // In a real application, you would trigger a server-side download here.
+        }
+
+        // Render evaluation results
+        function 
+renderEvaluationResults(type) {
+    const elements = getElements(type);
+    elements.evaluationResultsDiv.innerHTML = `
+        <div class="empty-state">
+            <i data-lucide="clipboard-list"></i>
+            <h3>No Evaluation Results Yet</h3>
+            <p>Evaluate submissions to see detailed reports here.</p>
+        </div>
+    `;
+    lucide.createIcons();
+}
+    
+
+        // Simulate CSV download
+        function downloadMockCsv(type, studentId) {
+            showMessageForType(type, 'info', `Simulating CSV download for ${type} results of Student ${studentId}.`);
+            // In a real app, you'd generate and download a CSV.
+            // For now, we can create a dummy CSV blob and trigger download.
+            const data = `Student ID,Type,Title,Score,Feedback,Detailed Analysis\n${studentId},${type},Mock Title,85,"Mock Feedback","Mock Detailed Analysis"`;
+            const blob = new Blob([data], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type}_${studentId}_report.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Toggle evaluation card expansion
+        function toggleEvaluation(type, index) {
+            const content = document.getElementById(`evaluation-content-${type}-${index}`);
+            const icon = document.getElementById(`expand-icon-${type}-${index}`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        }
+
+        // Show message for a specific tab's message div
+        function showMessageForType(type, msgType, text) {
+            const messageDiv = getElements(type).messageDiv;
+            messageDiv.classList.remove('hidden', 'error', 'success', 'info');
+            messageDiv.classList.add(msgType);
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <i data-lucide="${msgType === 'error' ? 'alert-circle' : msgType === 'success' ? 'check-circle' : 'info'}"></i>
+                    <span>${text}</span>
+                </div>
+            `;
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Setup form submission for each tab
+        ['test', 'assignment', 'exam', 'project'].forEach(type => {
+            const form = document.getElementById(`evaluation-form-${type}`);
+            const elements = getElements(type);
+
+            setupFileUpload(type); // Setup file upload listeners for each tab
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const course = elements.courseInput.value;
+                const questionPaperFile = elements.questionPaperInput.files[0];
+                const modelAnswerFile = elements.modelAnswerInput.files[0];
+                const criteria = elements.criteriaTextarea.value;
+
+                if (!course || !questionPaperFile || !modelAnswerFile || !criteria) {
+                    showMessageForType(type, 'error', 'Please fill in all required fields and upload both PDF files.');
+                    return;
+                }
+
+                if (questionPaperFile.type !== 'application/pdf' || modelAnswerFile.type !== 'application/pdf') {
+                    showMessageForType(type, 'error', 'Please upload PDF files only for question paper and model answer.');
+                    return;
+                }
+
+                elements.evaluateBtn.disabled = true;
+                elements.evaluateBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Evaluating...';
+                lucide.createIcons();
+
+                // Simulate evaluation process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // Simulate updating a submission status and adding a score/feedback
+                const submissionsToUpdate = mockStudentSubmissions[type].filter(s => s.status === 'Processing' || s.status === 'Pending');
+                if (submissionsToUpdate.length > 0) {
+                    const submission = submissionsToUpdate[0]; // Just take the first one for demonstration
+                    submission.status = 'Completed';
+                    submission.score = Math.floor(Math.random() * 30) + 70; // Random score between 70-100
+                    submission.feedback = `Great work on this ${type}! Your score is ${submission.score}. Keep up the good effort.`;
+                    submission.detailedAnalysis = `A detailed analysis of ${submission.title} by Student ${submission.id}: The submission demonstrated strong understanding of core concepts. There were minor areas where further elaboration could enhance the argument, particularly in section X. Overall, a commendable effort.`;
+                    showMessageForType(type, 'success', `Evaluation for ${submission.title} (Student ${submission.id}) completed!`);
+                } else {
+                    showMessageForType(type, 'info', 'No pending submissions to evaluate for this course type.');
+                }
+                
+                renderStudentSubmissions(type); // Re-render submissions table
+                renderEvaluationResults(type); // Re-render evaluation results
+
+                elements.evaluateBtn.disabled = false;
+                elements.evaluateBtn.innerHTML = '<i data-lucide="play-circle"></i> Evaluate ' + type.charAt(0).toUpperCase() + type.slice(1) + 's';
+                lucide.createIcons();
+            });
+        });
+
+        // Custom Logout Modal Functions
+        function showLogoutModal() {
+            confirmationModal.style.display = 'flex'; // Show the modal
+        }
+
+        confirmLogoutBtn.addEventListener('click', () => {
+            confirmationModal.style.display = 'none'; // Hide the modal
+            // In a real application, you would redirect to a logout endpoint or clear session data.
+            alert('Logged out successfully!'); // Using alert for simplicity here, but would use a custom message box in a full app.
+            window.location.reload(); // Simulate a full logout by reloading the page
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            confirmationModal.style.display = 'none'; // Hide the modal
+        });
+
+        // Initialize on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial tab indicator
+            updateTabIndicator('test');
+            // Load content for the default active tab ('test')
+            loadTabContent('test');
+        });
+
+        // Add resize listener to update tab indicator on window resize
+        window.addEventListener('resize', () => {
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab) {
+                updateTabIndicator(activeTab.dataset.tab);
+            }
+        });
+    </script>
+</body>
+</html>
