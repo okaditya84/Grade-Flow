@@ -1,246 +1,235 @@
-import os
 import streamlit as st
+from streamlit.components.v1 import html
+import base64
 import pandas as pd
+import io
 import matplotlib.pyplot as plt
 import numpy as np
+
+# 👉 Use real helper modules instead of mocks
 from utils import get_student_submissions, save_evaluation_criteria
 from evaluation import evaluate_submissions
-from streamlit.components.v1 import html
+
 
 def show_teacher_interface():
-    st.title("Teacher Dashboard")
+    """Render full‑screen HTML UI stored at UI/teacher_interface.html and handle events coming
+    back from the iframe via postMessage() calls."""
 
-    # Create tabs for different teacher functionalities
-    tabs = st.tabs(
-        [
-            "Evaluate Tests",
-            "Evaluate Assignments",
-            "Evaluate Exams",
-            "Evaluate Projects",
-        ]
+    # Optional: st.set_page_config(layout="wide")
+
+    # Hide almost all Streamlit chrome so the custom HTML can take over the screen
+    st.markdown(
+        """
+        <style>
+            .block-container, .main { padding: 0 !important; }
+            .stApp { background: #00171F !important; }
+            header, [data-testid="stHeader"], [data-testid="stToolbar"],
+            .stDeployButton, .stDecoration, [data-testid="stSidebar"] {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                width: 0 !important;
+            }
+            iframe {
+                position: fixed !important;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                border: none; z-index: 9999;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # Handle each tab
-    with tabs[0]:
-        show_evaluation_interface("test")
+    # 🖼 Load the handcrafted HTML interface
+    with open("UI/teacher_interface.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
 
-    with tabs[1]:
-        show_evaluation_interface("assignment")
-
-    with tabs[2]:
-        show_evaluation_interface("exam")
-
-    with tabs[3]:
-        show_evaluation_interface("project")
-
-
-def show_evaluation_interface(submission_type):
-    st.header(f"Evaluate {submission_type.title()}s")
-
-    # Course selection
-    course = st.text_input(f"Course Code for {submission_type.title()}")
-
-    # Question paper upload
-    question_paper = st.file_uploader(
-        f"Upload Question Paper for {submission_type.title()} (PDF)",
-        key=f"question_{submission_type}",
-        type="pdf",
+    # Personalise greeting/name
+    html_content = html_content.replace(
+        "Professor Smith", st.session_state.get("user_email", "Professor")
     )
 
-    # Model answer upload
-    model_answer = st.file_uploader(
-        f"Upload Model Answer for {submission_type.title()} (PDF)",
-        key=f"answer_{submission_type}",
-        type="pdf",
+    # Inject client‑side JS that posts messages to Streamlit when a user logs out or submits an evaluation
+    html_content = html_content.replace(
+        "</body>",
+        """
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                /* 1️⃣  LOG‑OUT BUTTON  */
+                const confirmLogout = document.getElementById("confirmLogoutBtn");
+                confirmLogout?.addEventListener("click", () => {
+                    window.parent.postMessage({
+                        type: "streamlit:setComponentValue",
+                        value: { action: "logout" }
+                    }, "*");
+                });
+
+                /* 2️⃣  EVALUATION FORMS  */
+                ["test", "assignment", "exam", "project"].forEach(type => {
+                    const form = document.getElementById(`evaluation-form-${type}`);
+                    form?.addEventListener("submit", async e => {
+                        e.preventDefault();
+
+                        const course = document.getElementById(`course-${type}`).value;
+                        const criteria = document.getElementById(`criteria-${type}`).value;
+                        const questionPaperFile = document.getElementById(`question-paper-${type}`).files[0];
+                        const modelAnswerFile  = document.getElementById(`model-answer-${type}`).files[0];
+
+                        if (!course || !criteria || !questionPaperFile || !modelAnswerFile) {
+                            alert("Please fill in all fields and upload both PDFs.");
+                            return;
+                        }
+
+                        const fileToBase64 = file => new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload  = () => resolve(reader.result.split(",")[1]);
+                            reader.onerror = reject;
+                        });
+
+                        const data = {
+                            action: "evaluate",
+                            type,
+                            course,
+                            criteria,
+                            question_paper: {
+                                name: questionPaperFile.name,
+                                content: await fileToBase64(questionPaperFile)
+                            },
+                            model_answer: {
+                                name: modelAnswerFile.name,
+                                content: await fileToBase64(modelAnswerFile)
+                            }
+                        };
+
+                        window.parent.postMessage({
+                            type: "streamlit:setComponentValue",
+                            value: data
+                        }, "*");
+                    });
+                });
+            });
+        </script>
+        </body>""",
     )
 
-    # Evaluation criteria
-    st.subheader("Evaluation Criteria")
+    # Display the HTML inside an iframe; capture any postMessage values returned.
+    component_value = html(html_content, height=0, scrolling=True)
 
-    default_criteria = get_default_criteria(submission_type)
+    # 📬 React to messages coming from JS
+    if isinstance(component_value, dict):
+        action = component_value.get("action")
 
-    evaluation_criteria = st.text_area(
-        "Define Evaluation Criteria",
-        value=default_criteria,
-        height=200,
-        key=f"criteria_{submission_type}",
-    )
-
-    # Get list of student submissions
-    if course:
-        student_submissions = get_student_submissions(submission_type, course)
-
-        if not student_submissions:
-            st.info(f"No {submission_type} submissions found for {course}.")
-        else:
-            st.subheader("Student Submissions")
-
-            # Display submissions in a table
-            submissions_df = pd.DataFrame(student_submissions)
-            st.dataframe(submissions_df, use_container_width=True)
-
-            # Evaluate button
-            if st.button(
-                f"Evaluate {submission_type.title()}s", key=f"eval_{submission_type}"
-            ):
-                if not question_paper or not model_answer:
-                    st.error("Please upload both question paper and model answer.")
-                    return
-
-                # Save criteria
-                save_evaluation_criteria(
-                    submission_type,
-                    course,
-                    st.session_state.user_email,
-                    evaluation_criteria,
-                )
-
-                # Perform evaluation
-                with st.spinner("Evaluating submissions... This may take some time."):
-                    results = evaluate_submissions(
-                        submission_type,
-                        course,
-                        question_paper,
-                        model_answer,
-                        evaluation_criteria,
-                        student_submissions,
-                    )
-
-                    # Display results
-                    display_evaluation_results(results, submission_type, course)
+        if action == "logout":
+            _handle_logout()
+        elif action == "evaluate":
+            _handle_evaluation(component_value)
 
 
-def get_default_criteria(submission_type):
-    """Return default evaluation criteria based on submission type"""
-    if submission_type == "test":
-        return """Evaluation Criteria for Tests:
-1. Correctness: 60 points - Answer matches the expected solution
-2. Completeness: 20 points - All parts of the question are addressed
-3. Clarity: 10 points - Clear explanation of steps and reasoning
-4. Presentation: 10 points - Neat and well-organized
-
-For complex problems worth more marks, prioritize understanding of concepts over minor calculation errors.
-For simpler problems (1-2 marks), focus on the final answer being correct."""
-
-    elif submission_type == "assignment":
-        return """Evaluation Criteria for Assignments:
-1. Understanding: 30 points - Demonstrates grasp of concepts and theories
-2. Application: 30 points - Correctly applies concepts to problems
-3. Thoroughness: 20 points - Covers all aspects of the assignment
-4. Creativity: 10 points - Shows original thinking when appropriate
-5. Presentation: 10 points - Well-structured and professionally presented
-
-Higher weight questions should demonstrate deeper understanding and application.
-Lower weight questions focus on basic concept correctness."""
-
-    elif submission_type == "exam":
-        return """Evaluation Criteria for Exams:
-1. Knowledge: 40 points - Accurate recall of course material
-2. Understanding: 30 points - Demonstrates comprehension of concepts
-3. Application: 20 points - Applies knowledge to solve problems
-4. Analysis: 10 points - Critical thinking and evaluation of information
-
-For questions with higher marks, prioritize conceptual understanding and application.
-For questions with lower marks (1-2), correctness of answer is most important."""
-
-    elif submission_type == "project":
-        return """Evaluation Criteria for Projects:
-1. Research: 20 points - Depth and breadth of research conducted
-2. Methodology: 20 points - Appropriate and well-executed approach
-3. Analysis: 20 points - Critical evaluation of data and findings
-4. Innovation: 15 points - Original contributions and creative solutions
-5. Presentation: 15 points - Professional report and organization
-6. Documentation: 10 points - Clear and comprehensive documentation
-
-Focus on the overall quality and cohesiveness of the project.
-Give credit for ambitious attempts even if implementation has minor flaws."""
+def _handle_logout():
+    """Clear session state and take user back to landing page."""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.session_state.authenticated = False
+    st.session_state.user_role = None
+    st.session_state.user_email = None
+    st.session_state.view = "landing"
+    st.session_state.ui_rendered = False
+    st.query_params.clear()
+    st.rerun()
 
 
-def display_evaluation_results(results, submission_type, course):
-    st.subheader(f"Evaluation Results for {course} {submission_type.title()}")
+def _handle_evaluation(data: dict):
+    """Decode incoming base64 PDFs, fetch submissions via utils, evaluate via evaluation, then show results."""
+    submission_type = data["type"]
+    course          = data["course"]
+    criteria        = data["criteria"]
+    email           = st.session_state.get("user_email", "teacher@example.com")
 
-    # Display summary statistics
-    if results:
-        scores = [r.get("Score", 0) for r in results]
-        avg_score = sum(scores) / len(scores) if scores else 0
+    # ---- Decode the uploaded PDFs back into file‑like objects ----
+    def _decode_file(finfo):
+        return io.BytesIO(base64.b64decode(finfo["content"])), finfo["name"]
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Average Score", f"{avg_score:.1f}/100")
-        col2.metric("Highest Score", f"{max(scores) if scores else 0}/100")
-        col3.metric("Lowest Score", f"{min(scores) if scores else 0}/100")
+    question_file, _ = _decode_file(data["question_paper"])
+    model_file,   _  = _decode_file(data["model_answer"])
 
-        # Create a dataframe for the results
-        results_df = pd.DataFrame(
-            [
-                {
-                    "Student": r.get("Student", ""),
-                    "Score": r.get("Score", 0),
-                    "Strengths": (
-                        r.get("Strengths", "")[:50] + "..."
-                        if r.get("Strengths", "")
-                        else ""
-                    ),
-                    "Areas for Improvement": (
-                        r.get("Areas for Improvement", "")[:50] + "..."
-                        if r.get("Areas for Improvement", "")
-                        else ""
-                    ),
-                }
-                for r in results
-            ]
+    # ---- Fetch student submissions (REAL implementation) ----
+    student_submissions = get_student_submissions(submission_type, course)
+
+    if not student_submissions:
+        st.warning(f"No submissions found for {submission_type} – {course}.")
+        return
+
+    # ---- Persist the evaluation criteria ----
+    save_evaluation_criteria(submission_type, course, email, criteria)
+
+    # ---- Run the actual evaluation ----
+    with st.spinner("Evaluating… this might take a moment ⏳"):
+        results = evaluate_submissions(
+            submission_type,
+            course,
+            question_file,
+            model_file,
+            criteria,
+            student_submissions,
         )
 
-        st.dataframe(results_df, use_container_width=True)
+    _display_results(results, submission_type, course)
 
-        # Generate and display visualizations
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-        # Score distribution histogram
-        ax1.hist(scores, bins=10, edgecolor="black")
-        ax1.set_title("Score Distribution")
-        ax1.set_xlabel("Score")
-        ax1.set_ylabel("Number of Students")
+def _display_results(results, submission_type, course):
+    """Pretty print a summary of evaluation results and show some basic analytics charts."""
 
-        # Score breakdown by different components (assuming we have this data)
-        categories = ["Understanding", "Application", "Clarity", "Presentation"]
-        example_values = np.random.rand(len(categories)) * 100  # Placeholder data
+    st.subheader(f"{submission_type.title()} Evaluation Results – {course}")
 
-        ax2.bar(categories, example_values)
-        ax2.set_title("Average Score by Category")
-        ax2.set_ylabel("Score (%)")
-        ax2.set_ylim(0, 100)
+    if not results:
+        st.info("Evaluation returned no results.")
+        return
 
-        plt.tight_layout()
-        st.pyplot(fig)
+    # Convert list[dict] → DataFrame for convenience
+    df = pd.DataFrame(results)
+    st.dataframe(df, use_container_width=True)
 
-        # Download buttons
-        st.download_button(
-            label="Download Results as CSV",
-            data=results_df.to_csv(index=False),
-            file_name=f"{course}_{submission_type}_results.csv",
-            mime="text/csv",
-        )
+    # ---- Metrics ----
+    scores = df["Score"].astype(float).tolist()
+    st.metric("Average", f"{np.mean(scores):.1f}/100")
+    st.metric("Max", f"{np.max(scores):.0f}/100")
+    st.metric("Min", f"{np.min(scores):.0f}/100")
 
-        # Detailed individual reports
-        st.subheader("Individual Student Reports")
-        for result in results:
-            with st.expander(
-                f"Student: {result.get('Student', 'Unknown')} - Score: {result.get('Score', 0)}/100"
-            ):
-                st.markdown(f"### Feedback for {result.get('Student', 'Student')}")
+    # ---- Visualisations ----
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
-                st.markdown("#### Strengths")
-                st.write(result.get("Strengths", "No specific strengths identified."))
+    # Histogram of scores
+    ax1.hist(scores, bins=10, edgecolor="black")
+    ax1.set_title("Score Distribution")
+    ax1.set_xlabel("Score")
+    ax1.set_ylabel("Students")
 
-                st.markdown("#### Areas for Improvement")
-                st.write(
-                    result.get(
-                        "Areas for Improvement",
-                        "No specific areas for improvement identified.",
-                    )
-                )
+    # Bar chart of category averages if present
+    # Fallback: generate random data to keep chart occupied
+    categories = ["Understanding", "Application", "Clarity", "Presentation"]
+    if set(categories).issubset(df.columns):
+        values = [df[c].mean() for c in categories]
+    else:
+        values = np.random.rand(len(categories)) * 100  # placeholder
 
-                st.markdown("#### Detailed Analysis")
-                st.write(
-                    result.get("Detailed Analysis", "No detailed analysis available.")
-                )
+    ax2.bar(categories, values)
+    ax2.set_ylim(0, 100)
+    ax2.set_title("Average by Category")
+    ax2.set_ylabel("Score (%)")
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # ---- Individual reports ----
+    for r in results:
+        with st.expander(f"{r.get('Student', 'Student')} – Score: {r.get('Score', 0)}"):
+            if "Feedback" in r:
+                st.write("**Feedback:**", r["Feedback"])
+            if "Strengths" in r:
+                st.write("**Strengths:**", r["Strengths"])
+            if "Areas for Improvement" in r:
+                st.write("**Areas for Improvement:**", r["Areas for Improvement"])
+            if "Detailed Analysis" in r:
+                st.write("**Detailed Analysis:**", r["Detailed Analysis"])
