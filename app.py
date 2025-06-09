@@ -3,7 +3,7 @@ import streamlit as st
 from auth import authenticate_user, signup_user, is_student, is_teacher
 from student_interface import show_student_interface
 from teacher_interface import show_teacher_interface
-from utils import setup_directories, load_css
+from utils import setup_directories, load_css, update_active_tests
 from dotenv import load_dotenv
 
 # Set page config - must be the first Streamlit command
@@ -33,6 +33,7 @@ def init_session_state():
 def main():
     # Initialize the application
     setup_directories()
+    update_active_tests()
     load_css()
     init_session_state()
 

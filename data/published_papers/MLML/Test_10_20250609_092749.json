@@ -1,0 +1,98 @@
+{
+  "title": "Test 10",
+  "course": "MLML",
+  "created_date": "2025-06-09 09:27:49",
+  "deadline": "2025-06-16",
+  "instructions": "1. Attempt all questions.\n2. Each question carries marks as indicated.\n3. Write clear and concise answers.\n4. Time management is crucial.",
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "Which of the following is NOT a core challenge in implementing Recurrent Neural Networks (RNNs)?",
+      "question_type": "Multiple Choice",
+      "marks": 3,
+      "difficulty": "medium",
+      "correct_answer": "Data Augmentation",
+      "options": [
+        "Overfitting",
+        "Vanishing Gradients",
+        "Exploding Gradients",
+        "Data Augmentation"
+      ]
+    },
+    {
+      "question_number": 2,
+      "question_text": "Describe the phenomenon of 'vanishing gradients' in RNNs and its impact on training. How does this relate to the difficulty of training RNNs for long-range dependencies?",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": null
+    },
+    {
+      "question_number": 3,
+      "question_text": "Explain the role of the 'forget gate' in a Long Short-Term Memory (LSTM) network. How does it contribute to addressing the vanishing gradient problem?",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "hard",
+      "correct_answer": null
+    },
+    {
+      "question_number": 4,
+      "question_text": "A vanilla RNN is limited in its capacity to learn long-range dependencies. Compare and contrast the architecture of a vanilla RNN with an LSTM network, highlighting the key structural differences that enable LSTMs to overcome this limitation.",
+      "question_type": "Short Answer",
+      "marks": 7,
+      "difficulty": "hard",
+      "correct_answer": null
+    },
+    {
+      "question_number": 5,
+      "question_text": "List three real-world applications of RNNs and explain why their sequential nature makes them particularly suitable for these tasks.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": null
+    },
+    {
+      "question_number": 6,
+      "question_text": "Discuss the challenges associated with training RNNs, particularly in relation to the 'exploding gradient' problem. Explain how gradient clipping techniques can mitigate this issue.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "hard",
+      "correct_answer": null
+    },
+    {
+      "question_number": 7,
+      "question_text": "Imagine you are training an RNN for machine translation.  Describe the potential impact of sequence length on the training process. What strategies could be employed to address the challenges posed by long sequences?",
+      "question_type": "Short Answer",
+      "marks": 7,
+      "difficulty": "hard",
+      "correct_answer": null
+    },
+    {
+      "question_number": 8,
+      "question_text": "What are the key advantages of using LSTMs over vanilla RNNs in tasks involving long-range dependencies? Provide specific examples to illustrate your points.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": null
+    },
+    {
+      "question_number": 9,
+      "question_text": "Explain how the concept of 'attention' can be incorporated into RNN architectures to improve performance in tasks like machine translation. Briefly describe how attention mechanisms address the limitations of traditional RNNs.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "hard",
+      "correct_answer": null
+    },
+    {
+      "question_number": 10,
+      "question_text": "Describe how RNNs can be used for text generation. What are some potential limitations of RNN-based text generation models?",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": null
+    }
+  ],
+  "include_answers": false,
+  "status": "active",
+  "time_limit": 180
+}

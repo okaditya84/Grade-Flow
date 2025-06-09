@@ -3,15 +3,23 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from utils import get_student_submissions, save_evaluation_criteria
-from evaluation import evaluate_submissions
+import tempfile
+from datetime import datetime, timedelta
+from fpdf import FPDF
+from utils import (
+    get_student_submissions, 
+    save_evaluation_criteria, 
+    get_published_question_papers, 
+    get_test_submissions_for_course
+)
+from evaluation import evaluate_submissions, evaluate_test_submissions
 from question_paper_generator import (
     generate_questions_from_reference, 
     generate_questions_from_prompt,
     create_question_paper_pdf,
-    save_question_paper
+    save_question_paper,
+    publish_question_paper
 )
-
 
 def show_teacher_interface():
     st.title("Teacher Dashboard")
@@ -23,7 +31,8 @@ def show_teacher_interface():
             "Evaluate Assignments",
             "Evaluate Exams",
             "Evaluate Projects",
-            "Generate Question Papers",  # New tab
+            "Generate Question Papers",
+            "Manage Published Papers",  # New tab
         ]
     )
 
@@ -40,16 +49,19 @@ def show_teacher_interface():
     with tabs[3]:
         show_evaluation_interface("project")
         
-    with tabs[4]:  # New tab for question paper generation
+    with tabs[4]:
         show_question_paper_generation_interface()
+        
+    with tabs[5]:  # New tab for managing published papers
+        show_published_papers_interface()
 
 
 def show_evaluation_interface(submission_type):
-    # Existing code - unchanged
     st.header(f"Evaluate {submission_type.title()}s")
 
-    # Course selection
-    course = st.text_input(f"Course Code for {submission_type.title()}")
+    # Add unique key to the course input
+    course = st.text_input(f"Course Code for {submission_type.title()}", 
+                         key=f"course_code_{submission_type}")
 
     # Question paper upload
     question_paper = st.file_uploader(
@@ -266,9 +278,9 @@ def show_question_paper_generation_interface():
     # Create directory if it doesn't exist
     os.makedirs("data/question_papers", exist_ok=True)
     
-    # Course information
-    course_code = st.text_input("Course Code")
-    title = st.text_input("Exam/Test Title")
+    # Add unique key to course code input
+    course_code = st.text_input("Course Code", key="gen_course_code")
+    title = st.text_input("Exam/Test Title", key="gen_title")
     
     # Create tabs for different generation methods
     generation_tabs = st.tabs(["Generate from Reference PDF", "Generate from Custom Prompt"])
@@ -611,12 +623,193 @@ def show_question_paper_generation_interface():
                     mime="application/pdf"
                 )
         
-        # Reset button
-        if st.button("Clear and Start Over", key="reset_btn"):
-            if "generated_questions" in st.session_state:
-                del st.session_state.generated_questions
-            if "pdf_bytes" in st.session_state:
-                del st.session_state.pdf_bytes
-            if "pdf_filename" in st.session_state:
-                del st.session_state.pdf_filename
-            st.rerun()
+         # Publication section
+        st.subheader("Publish to Students")
+        
+        # Initialize session state variables if they don't exist
+        if "publishing_mode" not in st.session_state:
+            st.session_state.publishing_mode = False
+        
+        # Set up the publication form
+        publication_col1, publication_col2 = st.columns(2)
+        
+        with publication_col1:
+            deadline_date = st.date_input(
+                "Submission Deadline", 
+                value=datetime.now() + timedelta(days=7),
+                key="publish_deadline_date"
+            )
+        
+        with publication_col2:
+            publish_instructions = st.checkbox(
+                "Use same instructions for students", 
+                value=True,
+                key="use_same_instructions"
+            )
+        
+        # Time limit option
+        time_limit_enabled = st.checkbox("Enable time limit for test", key="enable_time_limit")
+        
+        time_limit = None
+        if time_limit_enabled:
+            time_limit_col1, time_limit_col2 = st.columns(2)
+            
+            with time_limit_col1:
+                time_limit_hours = st.number_input("Hours", min_value=0, max_value=24, value=1, key="time_limit_hours")
+            
+            with time_limit_col2:
+                time_limit_minutes = st.number_input("Minutes", min_value=0, max_value=59, value=30, key="time_limit_minutes")
+            
+            time_limit = time_limit_hours * 60 + time_limit_minutes  # Convert to minutes
+            
+            st.info(f"Students will have {time_limit_hours} hour(s) and {time_limit_minutes} minute(s) to complete this test once they start.")
+        
+        if not publish_instructions:
+            publish_instruction_text = st.text_area(
+                "Instructions for Students (when published)",
+                value=instructions,
+                height=100,
+                key="publish_instructions"
+            )
+        else:
+            publish_instruction_text = instructions
+            
+        # Publish button with confirmation
+        if st.button("Publish to Students", key="publish_final_btn"):
+            if not title or not course_code:
+                st.error("Please enter a course code and title for the question paper.")
+            elif len(questions_data["questions"]) == 0:
+                st.error("Cannot publish a question paper with no questions.")
+            else:
+                try:
+                    # Create directories if they don't exist
+                    os.makedirs("data/published_papers", exist_ok=True)
+                    os.makedirs(f"data/published_papers/{course_code}", exist_ok=True)
+                    
+                    # Publish the question paper
+                    success = publish_question_paper(
+                        course_code,
+                        title,
+                        questions_data,
+                        deadline_date.strftime("%Y-%m-%d"),
+                        publish_instruction_text,
+                        include_answers=False,  # Never publish answers to students
+                        time_limit=time_limit   # Add time limit
+                    )
+                    
+                    if success:
+                        st.success(f"Question paper '{title}' published successfully for course {course_code}.")
+                        if time_limit_enabled:
+                            st.success(f"Time limit set: {time_limit_hours} hour(s) and {time_limit_minutes} minute(s).")
+                        st.info("Students can now access this paper in their interface.")
+                        
+                        # Option to view published papers
+                        if st.button("Manage Published Papers"):
+                            # Switch to the Manage Published Papers tab
+                            st.session_state.active_tab = 5  # Index of the Manage Published Papers tab
+                            st.rerun()
+                    else:
+                        st.error("Failed to publish question paper. Please try again.")
+                        
+                except Exception as e:
+                    st.error(f"Error publishing question paper: {str(e)}")
+                    st.error("Please check that all required data is provided and try again.")
+
+# Update the show_published_papers_interface function to fix the evaluation process
+def show_published_papers_interface():
+    """Interface for managing published question papers"""
+    st.header("Manage Published Question Papers")
+    
+    # Add unique key to the course input
+    course_code = st.text_input("Course Code", key="published_course_code")
+    
+    if not course_code:
+        st.info("Please enter a course code to view published question papers.")
+        return
+    
+    # Get published papers
+    published_papers = get_published_question_papers(course_code=course_code)
+    
+    if not published_papers:
+        st.info(f"No question papers have been published for {course_code}.")
+        return
+    
+    # Display papers in a selection box
+    paper_titles = [f"{paper['title']} (Published: {paper['created_date']})" for paper in published_papers]
+    selected_paper_idx = st.selectbox("Select Paper", range(len(paper_titles)), format_func=lambda x: paper_titles[x])
+    
+    # Get the selected paper
+    selected_paper = published_papers[selected_paper_idx]
+    
+    # Display paper details
+    st.subheader(f"Paper Details: {selected_paper['title']}")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"**Course:** {selected_paper['course']}")
+        st.write(f"**Published:** {selected_paper['created_date']}")
+    
+    with col2:
+        st.write(f"**Deadline:** {selected_paper.get('deadline', 'Not specified')}")
+        st.write(f"**Status:** {selected_paper.get('status', 'Active')}")
+        
+    with col3:
+        if selected_paper.get('time_limit'):
+            hours = selected_paper['time_limit'] // 60
+            minutes = selected_paper['time_limit'] % 60
+            time_display = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+            st.write(f"**Time Limit:** {time_display}")
+        else:
+            st.write("**Time Limit:** None")
+    
+    # Option to view paper content
+    if st.button("View Paper Content"):
+        st.subheader("Questions")
+        
+        for i, question in enumerate(selected_paper["questions"]):
+            with st.expander(f"Q{i+1}: {question['question_text'][:50]}... ({question['marks']} marks)"):
+                st.write(question["question_text"])
+                
+                if "options" in question and question["options"]:
+                    st.write("**Options:**")
+                    for j, option in enumerate(question["options"]):
+                        st.write(f"{chr(65+j)}. {option}")
+                
+                st.write(f"**Correct Answer:** {question['correct_answer']}")
+    
+    # View student submissions
+    st.subheader("Student Submissions")
+    
+    # Get submissions for this paper
+    submissions = get_test_submissions_for_course(course_code, selected_paper["title"])
+    
+    if not submissions:
+        st.info("No student submissions yet.")
+    else:
+        # Create DataFrame for submissions
+        submissions_df = pd.DataFrame([
+            {
+                "Student": sub["student_email"].split("@")[0],
+                "Submission Date": sub["submission_date"],
+                "Status": sub.get("evaluation_status", "Pending")
+            }
+            for sub in submissions
+        ])
+        
+        st.dataframe(submissions_df, use_container_width=True)
+        
+        # Option to evaluate submissions
+        if st.button("Evaluate Submissions"):
+            with st.spinner("Evaluating submissions... This may take some time."):
+                # Use our new evaluation function that handles JSON submissions directly
+                results, message = evaluate_test_submissions(
+                    course_code,
+                    selected_paper["title"],
+                    submissions
+                )
+                
+                if results:
+                    # Display results
+                    display_evaluation_results(results, "test", course_code)
+                else:
+                    st.error(f"Evaluation failed: {message}")

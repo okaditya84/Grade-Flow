@@ -35,12 +35,8 @@ def generate_questions_from_reference(reference_pdf, course, topics, difficulty_
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         reference_chunks = text_splitter.split_documents(reference_docs)
         
-        # Create embeddings and vector store
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        reference_vectors = FAISS.from_documents(reference_chunks, embeddings)
-        
         # Extract content from reference for context
-        reference_text = "\n".join([doc.page_content for doc in reference_chunks])
+        reference_text = "\n".join([doc.page_content for doc in reference_chunks[:10]])  # Limit to first 10 chunks
         
         # Create question generation prompt
         question_prompt = ChatPromptTemplate.from_template(
@@ -60,26 +56,23 @@ Requirements:
 - For numerical problems, include step-by-step solutions
 - For theoretical questions, provide model answer points
 
-Output Format:
-```json
+Output Format (respond with only the following JSON structure, no explanations or other text):
 {{
   "questions": [
     {{
       "question_number": 1,
       "question_text": "Question statement here",
-      "question_type": "multiple_choice/numerical/theoretical/etc",
+      "question_type": "Multiple Choice",
       "marks": 5,
-      "difficulty": "easy/medium/hard",
-      "options": ["Option A", "Option B", "Option C", "Option D"],  // include only for MCQs
-      "correct_answer": "Correct answer or solution",
-      "solution_steps": ["Step 1", "Step 2", "Step 3"]  // include for numerical problems
-    }},
-    // more questions...
+      "difficulty": "easy",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_answer": "The correct answer",
+      "solution_steps": ["Step 1", "Step 2", "Step 3"]
+    }}
   ]
 }}
-```
 
-Ensure the questions are relevant to the topics, appropriately challenging for the specified difficulty, and clearly formulated.
+Ensure the questions are relevant to the topics, appropriately challenging for the specified difficulty, and clearly formulated. Make sure your response is properly formatted JSON.
 """
         )
         
@@ -97,15 +90,30 @@ Ensure the questions are relevant to the topics, appropriately challenging for t
         
         # Extract JSON from response
         response_text = response.content
-        json_start = response_text.find('```json') + 7 if '```json' in response_text else response_text.find('{')
-        json_end = response_text.rfind('```') if '```' in response_text else response_text.rfind('}') + 1
+        
+        # Remove any markdown formatting and non-JSON content
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}') + 1
         
         if json_start >= 0 and json_end > json_start:
             json_content = response_text[json_start:json_end].strip()
-            questions_data = json.loads(json_content)
-            return questions_data
+            
+            # Handle potential JSON errors with a more robust approach
+            try:
+                questions_data = json.loads(json_content)
+                return questions_data
+            except json.JSONDecodeError as e:
+                # Try to clean the JSON string further if parsing failed
+                import re
+                clean_json = re.sub(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', json_content)
+                try:
+                    questions_data = json.loads(clean_json)
+                    return questions_data
+                except:
+                    # If still failing, return error
+                    return {"questions": [], "error": f"Failed to parse JSON: {str(e)}"}
         else:
-            return {"questions": [], "error": "Failed to parse generated questions"}
+            return {"questions": [], "error": "Failed to extract JSON from response"}
         
     except Exception as e:
         return {"questions": [], "error": f"Error generating questions: {str(e)}"}
@@ -330,4 +338,51 @@ def save_question_paper(course_code, title, questions_data, include_answers=Fals
     
     except Exception as e:
         print(f"Error saving question paper: {e}")
+        return False
+
+def publish_question_paper(course_code, title, questions_data, deadline, instructions, include_answers=False, time_limit=None):
+    """
+    Publish a question paper for students to access
+    
+    Args:
+        course_code: Course code
+        title: Test title
+        questions_data: Question paper data
+        deadline: Submission deadline date string (YYYY-MM-DD)
+        instructions: Test instructions
+        include_answers: Whether to include answers (always False for students)
+        time_limit: Time limit in minutes (optional)
+    """
+    try:
+        # Create directory structure
+        base_dir = f"data/published_papers/{course_code}"
+        os.makedirs(base_dir, exist_ok=True)
+        
+        # Create safe filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_title = "".join(c if c.isalnum() else "_" for c in title)
+        filename = f"{base_dir}/{safe_title}_{timestamp}.json"
+        
+        # Prepare data to save
+        publish_data = {
+            "title": title,
+            "course": course_code,
+            "created_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "deadline": deadline,
+            "instructions": instructions,
+            "questions": questions_data["questions"],
+            "include_answers": False,  # Never show answers to students
+            "status": "active",  # active or archived
+            "time_limit": time_limit  # Time limit in minutes
+        }
+        
+        # Save to disk
+        with open(filename, 'w') as f:
+            json.dump(publish_data, f, indent=2)
+        
+        print(f"Question paper published successfully to {filename}")
+        return True
+    
+    except Exception as e:
+        print(f"Error publishing question paper: {e}")
         return False

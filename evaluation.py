@@ -10,6 +10,98 @@ from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from utils import get_published_question_papers
+
+def update_submission_status(student_email, submission_type, course, title, status, evaluation_result=None):
+    """Update the status of a submission in the submission record"""
+    try:
+        # Path to the student's main submission record that student interface reads
+        record_path = f"data/submission_records/{student_email.replace('@', '_at_')}.json"
+        
+        # Load existing submission records or create new ones
+        if os.path.exists(record_path):
+            with open(record_path, 'r') as f:
+                records = json.load(f)
+        else:
+            # If no records exist yet, initialize empty list
+            records = []
+        
+        # Check if this submission already exists in records
+        submission_found = False
+        for record in records:
+            if (record.get('Type', '').lower() == submission_type.lower() and
+                record.get('Course') == course and
+                record.get('Title') == title):
+                
+                # Update existing record
+                record['Evaluation Status'] = status
+                
+                # Add evaluation results if provided
+                if evaluation_result:
+                    if 'Score' in evaluation_result:
+                        record['Score'] = evaluation_result['Score']
+                    if 'Marks' in evaluation_result:
+                        record['Marks'] = evaluation_result['Marks']
+                    if 'Strengths' in evaluation_result:
+                        record['Strengths'] = evaluation_result['Strengths']
+                    if 'Areas for Improvement' in evaluation_result:
+                        record['Areas for Improvement'] = evaluation_result['Areas for Improvement']
+                    if 'Detailed Analysis' in evaluation_result:
+                        record['Detailed Analysis'] = evaluation_result['Detailed Analysis']
+                
+                submission_found = True
+                break
+        
+        # If submission not found in records, add a new one
+        if not submission_found and submission_type.lower() == 'test':
+            # For test submissions, need to create a record if it doesn't exist
+            new_record = {
+                'Type': submission_type.capitalize(),
+                'Course': course,
+                'Title': title,
+                'Submission Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'Evaluation Status': status
+            }
+            
+            # Add evaluation results if provided
+            if evaluation_result:
+                if 'Score' in evaluation_result:
+                    new_record['Score'] = evaluation_result['Score']
+                if 'Marks' in evaluation_result:
+                    new_record['Marks'] = evaluation_result['Marks']
+                if 'Strengths' in evaluation_result:
+                    new_record['Strengths'] = evaluation_result['Strengths']
+                if 'Areas for Improvement' in evaluation_result:
+                    new_record['Areas for Improvement'] = evaluation_result['Areas for Improvement']
+                if 'Detailed Analysis' in evaluation_result:
+                    new_record['Detailed Analysis'] = evaluation_result['Detailed Analysis']
+            
+            records.append(new_record)
+        
+        # Save updated records
+        os.makedirs(os.path.dirname(record_path), exist_ok=True)
+        with open(record_path, 'w') as f:
+            json.dump(records, f, indent=2)
+        
+        # Also update the test submission file directly if it's a test
+        if submission_type.lower() == 'test':
+            submission_path = f"data/submissions/test/{course}/{title}/{student_email.replace('@', '_at_')}.json"
+            if os.path.exists(submission_path):
+                with open(submission_path, 'r') as f:
+                    submission_data = json.load(f)
+                
+                submission_data['evaluation_status'] = status
+                if evaluation_result:
+                    submission_data['evaluation'] = evaluation_result
+                
+                with open(submission_path, 'w') as f:
+                    json.dump(submission_data, f, indent=2)
+        
+        return True
+    
+    except Exception as e:
+        print(f"Error updating submission status: {e}")
+        return False
 
 def evaluate_submissions(submission_type, course, question_paper, model_answer, evaluation_criteria, student_submissions):
     """Evaluate student submissions against question paper and model answers"""
@@ -207,36 +299,263 @@ def save_evaluation_result(student_email, submission_type, course, title, evalua
     # Update submission status to mark as evaluated
     update_submission_status(student_email, submission_type, course, title, "Completed", evaluation_result)
 
-def update_submission_status(student_email, submission_type, course, title, status, evaluation_result=None):
-    """Update the status of a submission in the submission record"""
-    # Create a safe email identifier
-    safe_email = student_email.replace('@', '_at_').replace('.', '_dot_')
+
+def evaluate_test_submissions(course_code, paper_title, submissions):
+    """Evaluate test submissions against the published question paper"""
+    # Set up the LLM
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    llm = ChatGroq(groq_api_key=groq_api_key, model_name="Gemma2-9b-It")
     
-    # Path to submission record
-    record_path = f"data/submissions/{submission_type}/{safe_email}_{course}_submissions.json"
-    
-    if os.path.exists(record_path):
-        try:
-            with open(record_path, 'r') as f:
-                submissions = json.load(f)
+    try:
+        # Get the published paper (with correct answers)
+        published_papers = get_published_question_papers(course_code=course_code)
+        paper_data = None
+        
+        for paper in published_papers:
+            if paper["title"] == paper_title:
+                paper_data = paper
+                break
+        
+        if not paper_data:
+            return [], "Question paper not found"
+        
+        # Evaluate each submission
+        results = []
+        
+        for submission in submissions:
+            student_email = submission.get('student_email')
+            submission_date = submission.get('submission_date', 'Unknown')
+            answers = submission.get('answers', {})
             
-            # Find the submission and update its status
-            for submission in submissions:
-                if submission.get('Title') == title:
-                    submission['Evaluation Status'] = status
-                    
-                    # Add evaluation details if provided
-                    if evaluation_result:
-                        submission['Score'] = evaluation_result.get('Score', 0)
-                        submission['Feedback'] = {
-                            'Strengths': evaluation_result.get('Strengths', ''),
-                            'Areas for Improvement': evaluation_result.get('Areas for Improvement', '')
-                        }
-                        submission['Detailed Analysis'] = evaluation_result.get('Detailed Analysis', '')
-            
-            # Save updated submissions
-            with open(record_path, 'w') as f:
-                json.dump(submissions, f, indent=2)
+            if not student_email or not answers:
+                continue
                 
-        except Exception as e:
-            print(f"Error updating submission status: {e}")
+            # Calculate score based on correct answers
+            total_marks = 0
+            earned_marks = 0
+            correct_count = 0
+            incorrect_count = 0
+            unanswered_count = 0
+            
+            # Analysis of each question/answer
+            detailed_analysis = []
+            
+            # Process each question
+            for i, question in enumerate(paper_data["questions"]):
+                q_key = f"q_{i}"
+                student_answer = answers.get(q_key, "")
+                correct_answer = question.get("correct_answer", "")
+                max_marks = int(question.get("marks", 1))
+                total_marks += max_marks
+                
+                # For unanswered questions
+                if not student_answer or student_answer.strip() == "":
+                    unanswered_count += 1
+                    detailed_analysis.append(
+                        f"Q{i+1}: No answer provided. (0/{max_marks} marks)"
+                    )
+                    continue
+                
+                # For multiple choice questions
+                if question.get("question_type", "").lower() in ["multiple choice", "multiple_choice"]:
+                    if student_answer == correct_answer:
+                        earned_marks += max_marks
+                        correct_count += 1
+                        detailed_analysis.append(
+                            f"Q{i+1}: Correct. Your answer matches the expected solution. ({max_marks}/{max_marks} marks)"
+                        )
+                    else:
+                        incorrect_count += 1
+                        detailed_analysis.append(
+                            f"Q{i+1}: Incorrect. You selected '{student_answer}' but the correct answer is '{correct_answer}'. (0/{max_marks} marks)"
+                        )
+                
+                # For true/false questions
+                elif question.get("question_type", "").lower() in ["true/false", "true_false"]:
+                    if student_answer.lower() == correct_answer.lower():
+                        earned_marks += max_marks
+                        correct_count += 1
+                        detailed_analysis.append(
+                            f"Q{i+1}: Correct. Your answer '{student_answer}' is correct. ({max_marks}/{max_marks} marks)"
+                        )
+                    else:
+                        incorrect_count += 1
+                        detailed_analysis.append(
+                            f"Q{i+1}: Incorrect. You selected '{student_answer}' but the correct answer is '{correct_answer}'. (0/{max_marks} marks)"
+                        )
+                
+                # For other question types, use LLM to evaluate
+                else:
+                    # Prepare prompt for evaluation
+                    eval_prompt = f"""
+                    Evaluate this student answer for a {question.get('question_type', 'short answer')} question.
+                    
+                    Question: {question.get('question_text', '')}
+                    Correct Answer: {correct_answer}
+                    Student Answer: {student_answer}
+                    Max Marks: {max_marks}
+                    
+                    Evaluate how well the student answer matches the correct answer.
+                    Return a JSON object with:
+                    1. "marks_awarded": number between 0 and {max_marks} (integer)
+                    2. "feedback": brief explanation of why these marks were awarded
+                    """
+                    
+                    try:
+                        response = llm.invoke(eval_prompt)
+                        
+                        # Extract marks and feedback from response
+                        response_text = response.content
+                        
+                        # Try to find JSON in the response
+                        import re
+                        import json
+                        
+                        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                        if json_match:
+                            try:
+                                eval_result = json.loads(json_match.group(0))
+                                marks_awarded = int(eval_result.get("marks_awarded", 0))
+                                feedback = eval_result.get("feedback", "")
+                                
+                                # Cap marks at maximum possible
+                                marks_awarded = min(marks_awarded, max_marks)
+                                earned_marks += marks_awarded
+                                
+                                if marks_awarded == max_marks:
+                                    correct_count += 1
+                                elif marks_awarded > 0:
+                                    # Partially correct
+                                    pass
+                                else:
+                                    incorrect_count += 1
+                                    
+                                detailed_analysis.append(
+                                    f"Q{i+1}: {feedback} ({marks_awarded}/{max_marks} marks)"
+                                )
+                            except:
+                                # If JSON parsing fails, make a simple assessment
+                                similarity_score = 0
+                                if student_answer.lower() == correct_answer.lower():
+                                    earned_marks += max_marks
+                                    correct_count += 1
+                                    detailed_analysis.append(
+                                        f"Q{i+1}: Answer matches expected solution. ({max_marks}/{max_marks} marks)"
+                                    )
+                                else:
+                                    # Give partial credit for non-empty answers
+                                    partial_marks = max(1, max_marks // 2) if len(student_answer) > 20 else 0
+                                    earned_marks += partial_marks
+                                    if partial_marks > 0:
+                                        detailed_analysis.append(
+                                            f"Q{i+1}: Partial answer provided. ({partial_marks}/{max_marks} marks)"
+                                        )
+                                    else:
+                                        incorrect_count += 1
+                                        detailed_analysis.append(
+                                            f"Q{i+1}: Answer does not match expected solution. (0/{max_marks} marks)"
+                                        )
+                        else:
+                            # Simple evaluation if no JSON found
+                            if student_answer.lower() == correct_answer.lower():
+                                earned_marks += max_marks
+                                correct_count += 1
+                                detailed_analysis.append(
+                                    f"Q{i+1}: Answer matches expected solution. ({max_marks}/{max_marks} marks)"
+                                )
+                            else:
+                                incorrect_count += 1
+                                detailed_analysis.append(
+                                    f"Q{i+1}: Answer does not match expected solution. (0/{max_marks} marks)"
+                                )
+                                
+                    except Exception as e:
+                        # Fallback if LLM evaluation fails
+                        print(f"Error in LLM evaluation: {e}")
+                        # Simple evaluation
+                        if student_answer.lower() == correct_answer.lower():
+                            earned_marks += max_marks
+                            correct_count += 1
+                            detailed_analysis.append(
+                                f"Q{i+1}: Answer matches expected solution. ({max_marks}/{max_marks} marks)"
+                            )
+                        else:
+                            incorrect_count += 1
+                            detailed_analysis.append(
+                                f"Q{i+1}: Answer does not match expected solution. (0/{max_marks} marks)"
+                            )
+            
+            # Calculate final score as percentage
+            score = round((earned_marks / total_marks) * 100) if total_marks > 0 else 0
+            
+            # Generate overall feedback
+            strengths = []
+            areas_for_improvement = []
+            
+            if correct_count > 0:
+                strengths.append(f"Correctly answered {correct_count} question(s).")
+            
+            if incorrect_count > 0:
+                areas_for_improvement.append(f"Incorrectly answered {incorrect_count} question(s).")
+            
+            if unanswered_count > 0:
+                areas_for_improvement.append(f"Did not attempt {unanswered_count} question(s).")
+            
+            # Prepare evaluation result
+            evaluation_result = {
+                'Student': student_email.split('@')[0],
+                'Student Email': student_email,
+                'Score': score,
+                'Marks': f"{earned_marks}/{total_marks}",
+                'Strengths': "; ".join(strengths),
+                'Areas for Improvement': "; ".join(areas_for_improvement),
+                'Detailed Analysis': "\n\n".join(detailed_analysis),
+                'Confidence_Score': 10  # High confidence since we're using exact matching for most cases
+            }
+            
+            # Save evaluation result
+            save_evaluation_result(
+                student_email, 
+                "test", 
+                course_code, 
+                paper_title, 
+                evaluation_result
+            )
+            
+            # Update submission status
+            update_submission_status(
+                student_email,
+                "test",
+                course_code,
+                paper_title,
+                "Evaluated",
+                evaluation_result
+            )
+            
+            results.append(evaluation_result)
+        
+        return results, "Evaluation completed successfully"
+    
+    except Exception as e:
+        print(f"Error evaluating test submissions: {e}")
+        return [], f"Error: {str(e)}"
+
+def save_evaluation_result(student_email, submission_type, course, title, evaluation_result):
+    """Save evaluation result to disk"""
+    try:
+        # Create directory structure
+        result_dir = f"data/evaluations/results/{submission_type}/{course}/{title}"
+        os.makedirs(result_dir, exist_ok=True)
+        
+        # Save evaluation result
+        filename = f"{result_dir}/{student_email.replace('@', '_at_')}.json"
+        
+        with open(filename, 'w') as f:
+            json.dump(evaluation_result, f, indent=2)
+        
+        print(f"Evaluation result saved to {filename}")
+        return True
+    
+    except Exception as e:
+        print(f"Error saving evaluation result: {e}")
+        return False    
