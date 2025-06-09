@@ -1,6 +1,5 @@
 import os
 import json
-import shutil
 import streamlit as st
 from datetime import datetime
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -290,3 +289,48 @@ def save_evaluation_criteria(submission_type, course, teacher_email, criteria):
         f.write(f"Created by: {teacher_email}\n")
         f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         f.write(criteria)
+### 3. Update utils.py to include a function to get saved question papers:
+
+
+
+def get_saved_question_papers(course_code=None):
+    """Get all saved question papers or filter by course code"""
+    papers = []
+    base_dir = "data/question_papers"
+    
+    if not os.path.exists(base_dir):
+        return papers
+    
+    if course_code:
+        # Look for papers of a specific course
+        course_dir = os.path.join(base_dir, course_code)
+        if not os.path.exists(course_dir):
+            return papers
+        
+        # Get all JSON files in the course directory
+        for filename in os.listdir(course_dir):
+            if filename.endswith('.json'):
+                try:
+                    with open(os.path.join(course_dir, filename), 'r') as f:
+                        paper_data = json.load(f)
+                        papers.append(paper_data)
+                except:
+                    continue
+    else:
+        # Get papers from all courses
+        for course_dir in os.listdir(base_dir):
+            course_path = os.path.join(base_dir, course_dir)
+            if os.path.isdir(course_path):
+                for filename in os.listdir(course_path):
+                    if filename.endswith('.json'):
+                        try:
+                            with open(os.path.join(course_path, filename), 'r') as f:
+                                paper_data = json.load(f)
+                                papers.append(paper_data)
+                        except:
+                            continue
+    
+    # Sort by creation date (newest first)
+    papers.sort(key=lambda x: x.get("created_date", ""), reverse=True)
+    
+    return papers
