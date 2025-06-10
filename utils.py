@@ -209,28 +209,49 @@ def create_vector_store(user_email, submission_type, course, title):
 
 
 def get_submission_history(user_email):
-    """Get submission history for a student"""
+    """Get submission history for a student - Updated to include platform test submissions"""
     submissions = []
+    
+    # First check the new submission records format (for platform tests)
+    record_path = f"data/submission_records/{user_email.replace('@', '_at_')}.json"
+    if os.path.exists(record_path):
+        try:
+            with open(record_path, 'r') as f:
+                submissions.extend(json.load(f))
+        except Exception as e:
+            print(f"Error loading submission records: {e}")
+    
+    # Also check the old format for backward compatibility
     safe_email = user_email.replace("@", "_at_").replace(".", "_dot_")
 
-    # Check each submission type
+    # Check each submission type for the old format
     for submission_type in ["assignment", "exam", "test", "project"]:
         submissions_dir = f"data/submissions/{submission_type}"
 
         if not os.path.exists(submissions_dir):
             continue
 
-        # Look for submission records for this user
+        # Look for submission records for this user in old format
         for filename in os.listdir(submissions_dir):
-            if filename.startswith(safe_email) and filename.endswith(
-                "_submissions.json"
-            ):
+            if filename.startswith(safe_email) and filename.endswith("_submissions.json"):
                 record_path = os.path.join(submissions_dir, filename)
 
                 try:
                     with open(record_path, "r") as f:
                         user_submissions = json.load(f)
-                        submissions.extend(user_submissions)
+                        
+                        # Avoid duplicates by checking if submission already exists in new format
+                        for old_submission in user_submissions:
+                            is_duplicate = False
+                            for new_submission in submissions:
+                                if (new_submission.get('Type', '').lower() == old_submission.get('Type', '').lower() and
+                                    new_submission.get('Course') == old_submission.get('Course') and
+                                    new_submission.get('Title') == old_submission.get('Title')):
+                                    is_duplicate = True
+                                    break
+                            
+                            if not is_duplicate:
+                                submissions.append(old_submission)
                 except:
                     continue
 
@@ -417,7 +438,7 @@ def save_test_submission(student_email, course_code, paper_title, answers):
         with open(filename, 'w') as f:
             json.dump(submission_data, f, indent=2)
         
-        # Update submission record
+        # CRITICAL: Update submission record for student interface
         record_path = f"data/submission_records/{student_email.replace('@', '_at_')}.json"
         
         # Load existing submission records or create new ones
@@ -434,10 +455,11 @@ def save_test_submission(student_email, course_code, paper_title, answers):
                 record.get('Course') == course_code and
                 record.get('Title') == paper_title):
                 
-                # Update submission date
+                # Update submission date and status
                 record['Submission Date'] = submission_data["submission_date"]
                 record['Status'] = "Submitted, awaiting evaluation"
                 record['Evaluation Status'] = "pending"
+                record['File Path'] = filename
                 submission_found = True
                 break
         

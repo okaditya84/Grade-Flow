@@ -2,6 +2,7 @@ import os
 import json
 import streamlit as st
 import tempfile
+from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -35,6 +36,7 @@ def update_submission_status(student_email, submission_type, course, title, stat
                 
                 # Update existing record
                 record['Evaluation Status'] = status
+                record['Status'] = "Evaluated" if status == "Evaluated" else record.get('Status', 'Submitted')
                 
                 # Add evaluation results if provided
                 if evaluation_result:
@@ -52,14 +54,16 @@ def update_submission_status(student_email, submission_type, course, title, stat
                 submission_found = True
                 break
         
-        # If submission not found in records, add a new one
+        # If submission not found in records, add a new one (this happens for platform tests)
         if not submission_found and submission_type.lower() == 'test':
-            # For test submissions, need to create a record if it doesn't exist
+            # For test submissions taken on platform, need to create a record
             new_record = {
-                'Type': submission_type.capitalize(),
+                'Type': 'Test',
                 'Course': course,
                 'Title': title,
                 'Submission Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'File Path': f"data/submissions/test/{course}/{title}/{student_email.replace('@', '_at_')}.json",
+                'Status': "Evaluated" if status == "Evaluated" else "Submitted",
                 'Evaluation Status': status
             }
             
@@ -98,6 +102,10 @@ def update_submission_status(student_email, submission_type, course, title, stat
                     json.dump(submission_data, f, indent=2)
         
         return True
+    
+    except Exception as e:
+        print(f"Error updating submission status: {e}")
+        return False
     
     except Exception as e:
         print(f"Error updating submission status: {e}")

@@ -113,6 +113,7 @@ def show_submission_history():
     # Show evaluation results if available
     st.subheader("Evaluation Results")
 
+    # Filter for evaluated submissions
     evaluated_submissions = [
         s for s in submissions if s.get("Evaluation Status") == "Evaluated"
     ]
@@ -121,32 +122,96 @@ def show_submission_history():
         st.info("None of your submissions have been evaluated yet.")
         return
 
+    # Display evaluation results for each submission
     for submission in evaluated_submissions:
+        # Determine if this is a platform test or PDF submission
+        is_platform_test = (submission.get('Type', '').lower() == 'test' and 
+                           submission.get('File Path', '').endswith('.json'))
+        
+        # Create a nice display for the submission
+        score_display = f"{submission.get('Score', 'N/A')}/100"
+        if 'Marks' in submission:
+            score_display = f"{submission['Marks']} ({submission.get('Score', 'N/A')}/100)"
+        
         with st.expander(
-            f"{submission['Type']} - {submission['Title']} ({submission['Course']}) - {submission.get('Score', 'N/A')}/100"
+            f"📝 {submission['Type']} - {submission['Title']} ({submission['Course']}) - Score: {score_display}"
         ):
-            if "Score" in submission:
-                st.metric("Score", f"{submission['Score']}/100")
-
-            if "Marks" in submission:
-                st.write(f"**Marks obtained:** {submission['Marks']}")
-
-            if "Strengths" in submission:
-                st.markdown("### Strengths")
-                st.write(submission["Strengths"])
-
-            if "Areas for Improvement" in submission:
-                st.markdown("### Areas for Improvement")
-                st.write(submission["Areas for Improvement"])
-
-            if "Detailed Analysis" in submission:
-                st.markdown("### Detailed Analysis")
-                for analysis_item in submission["Detailed Analysis"].split("\n\n"):
-                    st.write(analysis_item)
+            # Display score metrics
+            col1, col2 = st.columns(2)
             
-            # If it's a test, show the option to view questions and your answers
-            if submission['Type'].lower() == 'test':
-                if st.button(f"View Test Details for {submission['Title']}", key=f"view_test_{submission['Title']}"):
+            with col1:
+                if "Score" in submission:
+                    st.metric("Overall Score", f"{submission['Score']}/100")
+                if "Marks" in submission:
+                    st.metric("Marks Obtained", submission['Marks'])
+            
+            with col2:
+                st.write(f"**Submission Date:** {submission.get('Submission Date', 'Unknown')}")
+                st.write(f"**Evaluation Status:** {submission.get('Evaluation Status', 'Unknown')}")
+
+            # Display detailed feedback
+            if "Strengths" in submission and submission["Strengths"]:
+                st.markdown("### ✅ Strengths")
+                st.success(submission["Strengths"])
+
+            if "Areas for Improvement" in submission and submission["Areas for Improvement"]:
+                st.markdown("### 📈 Areas for Improvement")
+                st.warning(submission["Areas for Improvement"])
+
+            if "Detailed Analysis" in submission and submission["Detailed Analysis"]:
+                st.markdown("### 📊 Detailed Analysis")
+                
+                # For platform tests, show question-by-question breakdown
+                if is_platform_test:
+                    detailed_analysis = submission["Detailed Analysis"]
+                    
+                    # Split the analysis by questions
+                    questions_analysis = detailed_analysis.split("\n\n")
+                    
+                    for i, analysis in enumerate(questions_analysis):
+                        if analysis.strip():
+                            # Extract question number and feedback
+                            if analysis.startswith("Q"):
+                                question_part = analysis.split(":", 1)
+                                if len(question_part) == 2:
+                                    question_num = question_part[0]
+                                    feedback = question_part[1].strip()
+                                    
+                                    with st.container():
+                                        st.markdown(f"**{question_num}:**")
+                                        
+                                        # Color code based on marks
+                                        if "marks)" in feedback:
+                                            marks_part = feedback.split("(")[-1].split(")")[0]
+                                            if "/" in marks_part:
+                                                earned, total = marks_part.split("/")
+                                                try:
+                                                    earned_num = int(earned.strip())
+                                                    total_num = int(total.strip())
+                                                    
+                                                    if earned_num == total_num:
+                                                        st.success(feedback)
+                                                    elif earned_num > 0:
+                                                        st.warning(feedback)
+                                                    else:
+                                                        st.error(feedback)
+                                                except:
+                                                    st.info(feedback)
+                                            else:
+                                                st.info(feedback)
+                                        else:
+                                            st.info(feedback)
+                                else:
+                                    st.write(analysis)
+                            else:
+                                st.write(analysis)
+                else:
+                    # For PDF submissions, show as regular text
+                    st.write(submission["Detailed Analysis"])
+            
+            # For platform tests, show option to view original questions and answers
+            if is_platform_test:
+                if st.button(f"View Test Details", key=f"view_test_details_{submission['Title']}_{submission['Course']}"):
                     # Get the published paper for reference
                     papers = get_published_question_papers(st.session_state.user_email, course_code=submission['Course'])
                     
@@ -166,8 +231,9 @@ def show_submission_history():
                         )
                         
                         if test_submission and 'answers' in test_submission:
-                            st.subheader("Your Answers")
+                            st.subheader("📋 Test Review")
                             
+                            # Show each question with student's answer
                             for q_idx, question in enumerate(paper_data["questions"]):
                                 answer_key = f"q_{q_idx}"
                                 student_answer = test_submission["answers"].get(answer_key, "No answer provided")
@@ -177,25 +243,49 @@ def show_submission_history():
                                 if "Detailed Analysis" in submission:
                                     for analysis_item in submission["Detailed Analysis"].split("\n\n"):
                                         if analysis_item.startswith(f"Q{q_idx+1}:"):
-                                            question_feedback = analysis_item
+                                            question_feedback = analysis_item.split(":", 1)[1].strip() if ":" in analysis_item else analysis_item
                                             break
                                 
-                                # Show question, student answer, and feedback
-                                with st.expander(f"Question {q_idx+1}: {question['question_text'][:50]}..."):
-                                    st.write("**Question:**")
+                                # Show question, student answer, and feedback in a nice layout
+                                with st.container():
+                                    st.markdown(f"#### Question {q_idx+1} ({question.get('marks', 1)} marks)")
+                                    
+                                    # Question text
+                                    st.markdown("**Question:**")
                                     st.write(question["question_text"])
                                     
+                                    # Options for multiple choice
                                     if "options" in question and question["options"]:
-                                        st.write("**Options:**")
+                                        st.markdown("**Options:**")
                                         for i, option in enumerate(question["options"]):
                                             st.write(f"{chr(65+i)}. {option}")
                                     
-                                    st.write("**Your Answer:**")
-                                    st.write(student_answer)
+                                    # Student's answer
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.markdown("**Your Answer:**")
+                                        if student_answer and student_answer != "No answer provided":
+                                            st.info(student_answer)
+                                        else:
+                                            st.warning("No answer provided")
                                     
-                                    if question_feedback:
-                                        st.write("**Feedback:**")
-                                        st.write(question_feedback)
+                                    # Feedback
+                                    with col2:
+                                        st.markdown("**Feedback:**")
+                                        if question_feedback:
+                                            # Color code feedback based on performance
+                                            if "Correct" in question_feedback:
+                                                st.success(question_feedback)
+                                            elif "Incorrect" in question_feedback:
+                                                st.error(question_feedback)
+                                            elif "No answer" in question_feedback:
+                                                st.warning(question_feedback)
+                                            else:
+                                                st.info(question_feedback)
+                                        else:
+                                            st.write("No specific feedback available")
+                                    
+                                    st.markdown("---")
                         else:
                             st.error("Could not retrieve your submission details.")
                     else:
