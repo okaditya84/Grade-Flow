@@ -282,6 +282,35 @@ def show_question_paper_generation_interface():
     course_code = st.text_input("Course Code", key="gen_course_code")
     title = st.text_input("Exam/Test Title", key="gen_title")
     
+    # School Information Section
+    with st.expander("📚 School Information (for PDF Header)", expanded=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            school_name = st.text_input(
+                "School Name", 
+                value="ABC International School",
+                key="school_name"
+            )
+            grade = st.text_input(
+                "Class/Grade", 
+                value="Grade 10",
+                key="grade"
+            )
+        
+        with col2:
+            academic_year = st.text_input(
+                "Academic Year", 
+                value="2024-2025",
+                key="academic_year"
+            )
+        
+        school_info = {
+            "school_name": school_name,
+            "academic_year": academic_year,
+            "grade": grade
+        }
+    
     # Create tabs for different generation methods
     generation_tabs = st.tabs(["Generate from Reference PDF", "Generate from Custom Prompt"])
     
@@ -469,28 +498,27 @@ def show_question_paper_generation_interface():
         edited_questions = []
         
         for i, question in enumerate(questions_data["questions"]):
-            with st.expander(f"Question {i+1} ({question['marks']} marks)"):
-                # Question text
-                question_text = st.text_area(
-                    "Question Text", 
-                    value=question["question_text"],
-                    key=f"q_text_{i}"
-                )
-                
+            with st.expander(f"Question {i+1} - Section {question.get('section', 'A')} ({question['marks']} marks)"):
                 # Question metadata
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    question_type = st.selectbox(
-                        "Question Type",
-                        options=["Multiple Choice", "Short Answer", "Long Answer", "Numerical", "True/False"],
-                        index=["Multiple Choice", "Short Answer", "Long Answer", "Numerical", "True/False"].index(
-                            question["question_type"] if question["question_type"] in ["Multiple Choice", "Short Answer", "Long Answer", "Numerical", "True/False"] else "Short Answer"
-                        ),
-                        key=f"q_type_{i}"
+                    section = st.selectbox(
+                        "Section",
+                        options=["A", "B", "C"],
+                        index=["A", "B", "C"].index(question.get("section", "A")),
+                        key=f"q_section_{i}"
                     )
                 
                 with col2:
+                    question_type = st.selectbox(
+                        "Question Type",
+                        options=["Multiple Choice", "True/False", "Fill in Blanks", "Short Answer", "Long Answer", "Numerical"],
+                        index=0,
+                        key=f"q_type_{i}"
+                    )
+                
+                with col3:
                     marks = st.number_input(
                         "Marks",
                         min_value=1,
@@ -499,13 +527,35 @@ def show_question_paper_generation_interface():
                         key=f"q_marks_{i}"
                     )
                 
-                with col3:
+                with col4:
                     difficulty = st.select_slider(
                         "Difficulty",
                         options=["Easy", "Medium", "Hard"],
                         value=question["difficulty"].capitalize() if question["difficulty"] in ["easy", "medium", "hard"] else "Medium",
                         key=f"q_diff_{i}"
                     )
+                
+                # Question text
+                question_text = st.text_area(
+                    "Question Text", 
+                    value=question["question_text"],
+                    key=f"q_text_{i}"
+                )
+                
+                # Chapter/Unit information
+                chapter_unit = st.text_input(
+                    "Chapter/Unit Reference",
+                    value=question.get("chapter_unit", ""),
+                    key=f"q_chapter_{i}"
+                )
+                
+                # Cognitive level
+                cognitive_level = st.selectbox(
+                    "Cognitive Level",
+                    options=["Knowledge", "Understanding", "Application", "Analysis", "Synthesis", "Evaluation"],
+                    index=0,
+                    key=f"q_cognitive_{i}"
+                )
                 
                 # Options for multiple choice
                 options = []
@@ -564,7 +614,9 @@ def show_question_paper_generation_interface():
                     "question_type": question_type,
                     "marks": marks,
                     "difficulty": difficulty.lower(),
-                    "correct_answer": correct_answer
+                    "correct_answer": correct_answer,
+                    "section": section,
+                    "chapter_unit": chapter_unit
                 }
                 
                 if question_type == "Multiple Choice":
@@ -579,13 +631,23 @@ def show_question_paper_generation_interface():
         questions_data["questions"] = edited_questions
         st.session_state.generated_questions = questions_data
         
+        # ADD THIS PREVIEW SECTION HERE:
+        st.markdown("---")
+        st.subheader("📋 Question Paper Preview")
+        
+        # Show formatted preview
+        if st.button("📋 Show Formatted Preview", key="show_preview"):
+            show_question_paper_preview(questions_data, course_code, title, school_info)
+        
+        st.markdown("---")
+        
         # Generate PDF button
         col1, col2 = st.columns(2)
         
         with col1:
             if st.button("Generate PDF", key="gen_pdf_btn"):
                 try:
-                    # Create PDF
+                    # Create PDF with school information
                     pdf_bytes, pdf_filename = create_question_paper_pdf(
                         questions_data,
                         course_code,
@@ -593,7 +655,8 @@ def show_question_paper_generation_interface():
                         exam_date.strftime("%Y-%m-%d"),
                         duration,
                         instructions,
-                        include_answers
+                        include_answers,
+                        school_info  # Add school info parameter
                     )
                     
                     # Provide download button
@@ -813,3 +876,101 @@ def show_published_papers_interface():
                     display_evaluation_results(results, "test", course_code)
                 else:
                     st.error(f"Evaluation failed: {message}")
+
+# Add this function to show a preview of the formatted question paper
+
+def show_question_paper_preview(questions_data, course_code, title, school_info):
+    """Show a preview of how the question paper will look"""
+    st.subheader("📋 Question Paper Preview")
+    
+    # Header preview
+    st.markdown("---")
+    st.markdown(f"<h2 style='text-align: center'>{school_info.get('school_name', 'SCHOOL NAME')}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center'>Academic Year: {school_info.get('academic_year', '2024-2025')}</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Paper details table
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"**Class/Grade:** {school_info.get('grade', 'Grade X')}")
+        st.write(f"**Time:** 3 hours")
+        st.write(f"**Date:** {datetime.now().strftime('%d/%m/%Y')}")
+    
+    with col2:
+        st.write(f"**Subject:** {course_code}")
+        st.write(f"**Total Marks:** {questions_data.get('paper_info', {}).get('total_marks', 'XX')}")
+        st.write(f"**Paper Code:** {title}-SET-A")
+    
+    st.markdown("---")
+    
+    # Questions by section
+    questions = questions_data.get("questions", [])
+    sections = {"A": [], "B": [], "C": []}
+    
+    for q in questions:
+        section = q.get("section", "A").upper()
+        sections[section].append(q)
+    
+    section_titles = {
+        "A": "Section A: Objective Questions (1 Mark each)",
+        "B": "Section B: Short Answer Questions (3-5 Marks each)",
+        "C": "Section C: Long Answer Questions (6-10 Marks each)"
+    }
+    
+    for section_key in ["A", "B", "C"]:
+        if sections[section_key]:
+            st.markdown(f"### {section_titles[section_key]}")
+            
+            for q in sections[section_key]:
+                with st.container():
+                    # Question header
+                    marks_text = f"({q.get('marks', 1)} Mark{'s' if q.get('marks', 1) > 1 else ''})"
+                    st.markdown(f"**Q{q.get('question_number', '')}. {marks_text}**")
+                    
+                    # Chapter reference
+                    if q.get('chapter_unit'):
+                        st.markdown(f"*[{q.get('chapter_unit')}]*")
+                    
+                    # Question text
+                    st.write(q.get('question_text', ''))
+                    
+                    # Options for MCQs
+                    if q.get('question_type', '').lower() in ['multiple choice', 'mcq'] and q.get('options'):
+                        for i, option in enumerate(q['options']):
+                            st.write(f"({chr(97+i)}) {option}")
+                    
+                    st.write("")  # Space between questions
+            
+            st.markdown("---")
+    
+    # Paper analysis
+    st.subheader("📊 Question Paper Analysis")
+    
+    paper_info = questions_data.get('paper_info', {})
+    sections_info = paper_info.get('sections', {})
+    
+    analysis_data = {
+        "Section": ["A", "B", "C", "Total"],
+        "Type of Questions": [
+            "Objective (MCQ, T/F, Fill)", 
+            "Short Answer", 
+            "Long Answer", 
+            "ALL"
+        ],
+        "No. of Questions": [
+            sections_info.get('section_a', {}).get('questions', 0),
+            sections_info.get('section_b', {}).get('questions', 0),
+            sections_info.get('section_c', {}).get('questions', 0),
+            sum([sections_info.get(f'section_{s}', {}).get('questions', 0) for s in ['a', 'b', 'c']])
+        ],
+        "Marks per Question": ["1", "3-5", "6-10", "-"],
+        "Total Marks": [
+            sections_info.get('section_a', {}).get('total_marks', 0),
+            sections_info.get('section_b', {}).get('total_marks', 0),
+            sections_info.get('section_c', {}).get('total_marks', 0),
+            paper_info.get('total_marks', 0)
+        ]
+    }
+    
+    analysis_df = pd.DataFrame(analysis_data)
+    st.table(analysis_df)
