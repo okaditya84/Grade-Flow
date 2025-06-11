@@ -35,7 +35,7 @@ def setup_directories():
         "data/submission_records",
         "data/evaluations",
         "data/evaluations/results",
-        "data/sessions",  # Add this line for session persistence
+        "data/sessions",
         "data/admin_logs",
         "data/system_backups",
         "data/analytics_cache",
@@ -46,6 +46,7 @@ def setup_directories():
         os.makedirs(directory, exist_ok=True)
 
     create_admin_directories()    
+    setup_plagiarism_directories()
 
 
 def load_css():
@@ -877,3 +878,46 @@ def cleanup_old_sessions():
     except Exception as e:
         print(f"Error cleaning old sessions: {e}")
         return 0
+
+def setup_plagiarism_directories():
+    """Set up directories for plagiarism detection"""
+    plagiarism_dirs = [
+        "data/plagiarism_results",
+        "data/plagiarism_settings", 
+        "data/plagiarism_cache",
+        "data/plagiarism_reports"
+    ]
+    
+    for directory in plagiarism_dirs:
+        os.makedirs(directory, exist_ok=True)    
+
+def get_plagiarism_summary_for_course(course_code):
+    """Get plagiarism summary for a specific course"""
+    try:
+        from plagiarism_detector import PlagiarismDatabase
+        db = PlagiarismDatabase()
+        results = db.get_plagiarism_results(course=course_code)
+        
+        summary = {
+            'total_cases': len(results),
+            'critical_cases': len([r for r in results if r['plagiarism_level'] == 'CRITICAL']),
+            'high_cases': len([r for r in results if r['plagiarism_level'] == 'HIGH']),
+            'moderate_cases': len([r for r in results if r['plagiarism_level'] == 'MODERATE']),
+            'students_involved': set()
+        }
+        
+        for result in results:
+            summary['students_involved'].add(result['submission1_info']['student_email'])
+            summary['students_involved'].add(result['submission2_info']['student_email'])
+        
+        summary['students_involved'] = len(summary['students_involved'])
+        
+        return summary
+    except:
+        return {
+            'total_cases': 0,
+            'critical_cases': 0,
+            'high_cases': 0,
+            'moderate_cases': 0,
+            'students_involved': 0
+        }

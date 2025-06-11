@@ -20,23 +20,24 @@ from question_paper_generator import (
     save_question_paper,
     publish_question_paper
 )
+from plagiarism_detector import PlagiarismDetector, PlagiarismDatabase, run_plagiarism_detection_batch
 
 def show_teacher_interface():
-    st.title("Teacher Dashboard")
+    """Updated teacher interface with plagiarism detection"""
+    st.title(f"👨‍🏫 Teacher Dashboard")
+    st.write(f"Welcome, {st.session_state.user_email}")
 
-    # Create tabs for different teacher functionalities
-    tabs = st.tabs(
-        [
-            "Evaluate Tests",
-            "Evaluate Assignments",
-            "Evaluate Exams",
-            "Evaluate Projects",
-            "Generate Question Papers",
-            "Manage Published Papers",  # New tab
-        ]
-    )
+    # Create main tabs - ADD plagiarism detection tab
+    tabs = st.tabs([
+        "Evaluate Tests", 
+        "Evaluate Assignments", 
+        "Evaluate Exams", 
+        "Evaluate Projects",
+        "Generate Question Papers",
+        "Manage Published Papers",
+        "🔍 Plagiarism Detection"  # NEW TAB
+    ])
 
-    # Handle each tab
     with tabs[0]:
         show_evaluation_interface("test")
 
@@ -48,12 +49,15 @@ def show_teacher_interface():
 
     with tabs[3]:
         show_evaluation_interface("project")
-        
+
     with tabs[4]:
         show_question_paper_generation_interface()
-        
-    with tabs[5]:  # New tab for managing published papers
+    
+    with tabs[5]:
         show_published_papers_interface()
+    
+    with tabs[6]:  
+        show_plagiarism_detection_interface()
 
 
 def show_evaluation_interface(submission_type):
@@ -974,3 +978,498 @@ def show_question_paper_preview(questions_data, course_code, title, school_info)
     
     analysis_df = pd.DataFrame(analysis_data)
     st.table(analysis_df)
+
+def show_plagiarism_detection_interface():
+    """Interface for plagiarism detection and management"""
+    st.header("🔍 Plagiarism Detection System")
+    
+    # Create tabs for different plagiarism functions
+    plag_tabs = st.tabs([
+        "🔎 Run Detection", 
+        "📊 View Results", 
+        "📈 Analytics",
+        "⚙️ Settings"
+    ])
+    
+    with plag_tabs[0]:
+        show_run_plagiarism_detection()
+    
+    with plag_tabs[1]:
+        show_plagiarism_results()
+    
+    with plag_tabs[2]:
+        show_plagiarism_analytics()
+    
+    with plag_tabs[3]:
+        show_plagiarism_settings()
+
+def show_run_plagiarism_detection():
+    """Interface to run plagiarism detection"""
+    st.subheader("🔎 Run Plagiarism Detection")
+    
+    # Detection scope options
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        detection_scope = st.selectbox(
+            "Detection Scope",
+            ["All Submissions", "Specific Course", "Specific Type", "Recent Submissions"]
+        )
+    
+    with col2:
+        if detection_scope == "Specific Course":
+            course_filter = st.text_input("Course Code")
+        elif detection_scope == "Specific Type":
+            type_filter = st.selectbox(
+                "Submission Type",
+                ["test", "assignment", "exam", "project"]
+            )
+        elif detection_scope == "Recent Submissions":
+            days_filter = st.number_input("Days back", min_value=1, max_value=365, value=30)
+    
+    # Detection sensitivity
+    st.subheader("Detection Settings")
+    
+    sensitivity = st.select_slider(
+        "Detection Sensitivity",
+        options=["Low", "Medium", "High", "Maximum"],
+        value="High",
+        help="Higher sensitivity may catch more cases but could increase false positives"
+    )
+    
+    # Include specific checks
+    check_options = st.multiselect(
+        "Include Additional Checks",
+        [
+            "Cross-batch comparison",
+            "Writing style analysis", 
+            "Structural similarity",
+            "Common phrase detection",
+            "Time-based patterns"
+        ],
+        default=["Cross-batch comparison", "Writing style analysis"]
+    )
+    
+    # Run detection button
+    st.markdown("---")
+    
+    if st.button("🚀 Start Plagiarism Detection", type="primary"):
+        if detection_scope == "All Submissions":
+            course_param = None
+            type_param = None
+        elif detection_scope == "Specific Course":
+            course_param = course_filter if 'course_filter' in locals() else None
+            type_param = None
+        elif detection_scope == "Specific Type":
+            course_param = None
+            type_param = type_filter if 'type_filter' in locals() else None
+        else:
+            course_param = None
+            type_param = None
+        
+        # Show progress
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        try:
+            status_text.text("Initializing plagiarism detection...")
+            progress_bar.progress(10)
+            
+            status_text.text("Collecting submissions...")
+            progress_bar.progress(30)
+            
+            # Run detection
+            results = run_plagiarism_detection_batch(course_param, type_param)
+            progress_bar.progress(80)
+            
+            status_text.text("Analyzing results...")
+            progress_bar.progress(100)
+            
+            # Display results summary
+            st.success(f"✅ Detection completed! Found {len(results)} potential plagiarism cases.")
+            
+            if results:
+                # Quick summary
+                critical_cases = len([r for r in results if r['plagiarism_level'] == 'CRITICAL'])
+                high_cases = len([r for r in results if r['plagiarism_level'] == 'HIGH'])
+                moderate_cases = len([r for r in results if r['plagiarism_level'] == 'MODERATE'])
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🚨 Critical Cases", critical_cases)
+                with col2:
+                    st.metric("⚠️ High Risk Cases", high_cases)
+                with col3:
+                    st.metric("⚡ Moderate Cases", moderate_cases)
+                
+                # Show top cases
+                st.subheader("Top Plagiarism Cases")
+                for i, result in enumerate(results[:5]):
+                    with st.expander(
+                        f"Case {i+1}: {result['plagiarism_level']} - "
+                        f"{result['submission1_info']['student_email'].split('@')[0]} vs "
+                        f"{result['submission2_info']['student_email'].split('@')[0]} "
+                        f"({result['composite_score']}% similarity)"
+                    ):
+                        display_plagiarism_case(result)
+            
+        except Exception as e:
+            st.error(f"Error during plagiarism detection: {e}")
+        finally:
+            progress_bar.empty()
+            status_text.empty()
+
+def show_plagiarism_results():
+    """Display plagiarism detection results"""
+    st.subheader("📊 Plagiarism Detection Results")
+    
+    db = PlagiarismDatabase()
+    
+    # Filter options
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        level_filter = st.selectbox(
+            "Filter by Level",
+            ["All", "CRITICAL", "HIGH", "MODERATE", "LOW"]
+        )
+    
+    with col2:
+        course_filter = st.text_input("Filter by Course")
+    
+    with col3:
+        limit = st.number_input("Max Results", min_value=10, max_value=100, value=50)
+    
+    # Get results
+    level_param = None if level_filter == "All" else level_filter
+    course_param = course_filter if course_filter else None
+    
+    results = db.get_plagiarism_results(
+        course=course_param,
+        level=level_param,
+        limit=limit
+    )
+    
+    if not results:
+        st.info("No plagiarism results found. Run detection first.")
+        return
+    
+    # Display results
+    st.write(f"Found {len(results)} plagiarism cases")
+    
+    # Results summary
+    level_counts = {}
+    for result in results:
+        level = result.get('plagiarism_level', 'UNKNOWN')
+        level_counts[level] = level_counts.get(level, 0) + 1
+    
+    if level_counts:
+        st.bar_chart(level_counts)
+    
+    # Detailed results
+    for i, result in enumerate(results):
+        severity_color = {
+            'CRITICAL': '🚨',
+            'HIGH': '⚠️', 
+            'MODERATE': '⚡',
+            'LOW': 'ℹ️',
+            'NONE': '✅'
+        }
+        
+        icon = severity_color.get(result['plagiarism_level'], '❓')
+        
+        with st.expander(
+            f"{icon} Case {i+1}: {result['plagiarism_level']} Similarity "
+            f"({result['composite_score']}%) - "
+            f"{result['submission1_info']['student_email'].split('@')[0]} vs "
+            f"{result['submission2_info']['student_email'].split('@')[0]}"
+        ):
+            display_plagiarism_case(result)
+
+def display_plagiarism_case(result):
+    """Display detailed information about a plagiarism case"""
+    
+    # Case overview
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Student 1:**")
+        st.write(f"Email: {result['submission1_info']['student_email']}")
+        st.write(f"Course: {result['submission1_info']['course']}")
+        st.write(f"Assignment: {result['submission1_info']['title']}")
+        st.write(f"Date: {result['submission1_info']['submission_date']}")
+    
+    with col2:
+        st.write("**Student 2:**")
+        st.write(f"Email: {result['submission2_info']['student_email']}")
+        st.write(f"Course: {result['submission2_info']['course']}")
+        st.write(f"Assignment: {result['submission2_info']['title']}")
+        st.write(f"Date: {result['submission2_info']['submission_date']}")
+    
+    # Similarity metrics
+    st.subheader("Similarity Analysis")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Composite Score", f"{result['composite_score']}%")
+        st.metric("Exact Similarity", f"{result['similarity_scores']['exact_similarity']}%")
+    
+    with col2:
+        st.metric("Semantic Similarity", f"{result['similarity_scores']['semantic_similarity']}%")
+        st.metric("TF-IDF Similarity", f"{result['similarity_scores']['tfidf_similarity']}%")
+    
+    with col3:
+        st.metric("Structural Similarity", f"{result['structural_similarity']}%")
+        st.metric("Writing Style", f"{result['writing_style_similarity']}%")
+    
+    # Common phrases
+    if result.get('common_phrases'):
+        st.subheader("Common Phrases Found")
+        for phrase in result['common_phrases']:
+            st.code(phrase)
+    
+    # Analysis details
+    st.subheader("Analysis Details")
+    st.write(f"**Level:** {result['plagiarism_level']}")
+    st.write(f"**Description:** {result['description']}")
+    st.write(f"**Analysis Date:** {result['analysis_timestamp']}")
+    
+    # Action buttons
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("📧 Notify Students", key=f"notify_{hash(str(result))}"):
+            st.warning("Student notification feature would be implemented here")
+    
+    with col2:
+        if st.button("📝 Generate Report", key=f"report_{hash(str(result))}"):
+            generate_plagiarism_report(result)
+    
+    with col3:
+        if st.button("❌ Mark as False Positive", key=f"false_{hash(str(result))}"):
+            st.info("False positive marking feature would be implemented here")
+
+def show_plagiarism_analytics():
+    """Show plagiarism analytics and trends"""
+    st.subheader("📈 Plagiarism Analytics")
+    
+    db = PlagiarismDatabase()
+    all_results = db.get_plagiarism_results()
+    
+    if not all_results:
+        st.info("No data available for analytics. Run detection first.")
+        return
+    
+    # Overall statistics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    total_cases = len(all_results)
+    critical_cases = len([r for r in all_results if r['plagiarism_level'] == 'CRITICAL'])
+    high_cases = len([r for r in all_results if r['plagiarism_level'] == 'HIGH'])
+    avg_similarity = np.mean([r['composite_score'] for r in all_results])
+    
+    with col1:
+        st.metric("Total Cases", total_cases)
+    with col2:
+        st.metric("Critical Cases", critical_cases)
+    with col3:
+        st.metric("High Risk Cases", high_cases)
+    with col4:
+        st.metric("Avg Similarity", f"{avg_similarity:.1f}%")
+    
+    # Trends over time
+    st.subheader("Detection Trends")
+    
+    # Group by date
+    from collections import defaultdict
+    daily_counts = defaultdict(int)
+    
+    for result in all_results:
+        date = result['analysis_timestamp'][:10]  # Extract date part
+        daily_counts[date] += 1
+    
+    if daily_counts:
+        dates = sorted(daily_counts.keys())
+        counts = [daily_counts[date] for date in dates]
+        
+        import plotly.express as px
+        import pandas as pd
+        
+        df = pd.DataFrame({'Date': dates, 'Cases': counts})
+        fig = px.line(df, x='Date', y='Cases', title='Plagiarism Cases Over Time')
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Course-wise analysis
+    st.subheader("Course-wise Analysis")
+    
+    course_stats = defaultdict(lambda: {'total': 0, 'critical': 0, 'high': 0})
+    
+    for result in all_results:
+        course1 = result['submission1_info']['course']
+        course2 = result['submission2_info']['course']
+        level = result['plagiarism_level']
+        
+        course_stats[course1]['total'] += 1
+        course_stats[course2]['total'] += 1
+        
+        if level == 'CRITICAL':
+            course_stats[course1]['critical'] += 1
+            course_stats[course2]['critical'] += 1
+        elif level == 'HIGH':
+            course_stats[course1]['high'] += 1
+            course_stats[course2]['high'] += 1
+    
+    if course_stats:
+        course_df = pd.DataFrame([
+            {
+                'Course': course,
+                'Total Cases': stats['total'],
+                'Critical': stats['critical'],
+                'High Risk': stats['high']
+            }
+            for course, stats in course_stats.items()
+        ])
+        
+        st.dataframe(course_df, use_container_width=True)
+
+def show_plagiarism_settings():
+    """Plagiarism detection settings and configuration"""
+    st.subheader("⚙️ Plagiarism Detection Settings")
+    
+    # Detection thresholds
+    st.write("**Detection Thresholds**")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        exact_threshold = st.slider(
+            "Exact Match Threshold (%)",
+            min_value=80,
+            max_value=100,
+            value=95,
+            help="Threshold for considering submissions as exact matches"
+        )
+        
+        high_threshold = st.slider(
+            "High Similarity Threshold (%)",
+            min_value=70,
+            max_value=90,
+            value=85,
+            help="Threshold for high plagiarism detection"
+        )
+    
+    with col2:
+        moderate_threshold = st.slider(
+            "Moderate Similarity Threshold (%)",
+            min_value=50,
+            max_value=80,
+            value=70,
+            help="Threshold for moderate plagiarism detection"
+        )
+        
+        min_text_length = st.number_input(
+            "Minimum Text Length (characters)",
+            min_value=10,
+            max_value=500,
+            value=50,
+            help="Minimum text length to consider for plagiarism"
+        )
+    
+    # Algorithm weights
+    st.write("**Algorithm Weights**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        exact_weight = st.slider("Exact Similarity Weight", 0.0, 1.0, 0.25, 0.05)
+        tfidf_weight = st.slider("TF-IDF Weight", 0.0, 1.0, 0.25, 0.05)
+    
+    with col2:
+        semantic_weight = st.slider("Semantic Weight", 0.0, 1.0, 0.30, 0.05)
+        sequence_weight = st.slider("Sequence Weight", 0.0, 1.0, 0.15, 0.05)
+    
+    with col3:
+        jaccard_weight = st.slider("Jaccard Weight", 0.0, 1.0, 0.05, 0.05)
+        style_weight = st.slider("Writing Style Weight", 0.0, 1.0, 0.10, 0.05)
+    
+    # Save settings
+    if st.button("💾 Save Settings"):
+        settings = {
+            'exact_threshold': exact_threshold,
+            'high_threshold': high_threshold,
+            'moderate_threshold': moderate_threshold,
+            'min_text_length': min_text_length,
+            'weights': {
+                'exact_similarity': exact_weight,
+                'tfidf_similarity': tfidf_weight,
+                'semantic_similarity': semantic_weight,
+                'sequence_similarity': sequence_weight,
+                'jaccard_similarity': jaccard_weight,
+                'writing_style': style_weight
+            }
+        }
+        
+        # Save to file
+        os.makedirs("data/plagiarism_settings", exist_ok=True)
+        with open("data/plagiarism_settings/config.json", 'w') as f:
+            json.dump(settings, f, indent=2)
+        
+        st.success("Settings saved successfully!")
+
+def generate_plagiarism_report(result):
+    """Generate a detailed plagiarism report"""
+    try:
+        report_content = f"""
+# Plagiarism Detection Report
+
+## Case Summary
+- **Detection Date**: {result['analysis_timestamp']}
+- **Plagiarism Level**: {result['plagiarism_level']}
+- **Overall Similarity Score**: {result['composite_score']}%
+
+## Students Involved
+
+### Student 1
+- **Email**: {result['submission1_info']['student_email']}
+- **Course**: {result['submission1_info']['course']}
+- **Assignment**: {result['submission1_info']['title']}
+- **Submission Date**: {result['submission1_info']['submission_date']}
+
+### Student 2
+- **Email**: {result['submission2_info']['student_email']}
+- **Course**: {result['submission2_info']['course']}
+- **Assignment**: {result['submission2_info']['title']}
+- **Submission Date**: {result['submission2_info']['submission_date']}
+
+## Similarity Analysis
+
+### Detailed Scores
+- **Exact Similarity**: {result['similarity_scores']['exact_similarity']}%
+- **TF-IDF Similarity**: {result['similarity_scores']['tfidf_similarity']}%
+- **Semantic Similarity**: {result['similarity_scores']['semantic_similarity']}%
+- **Sequence Similarity**: {result['similarity_scores']['sequence_similarity']}%
+- **Jaccard Similarity**: {result['similarity_scores']['jaccard_similarity']}%
+- **Structural Similarity**: {result['structural_similarity']}%
+- **Writing Style Similarity**: {result['writing_style_similarity']}%
+
+## Common Phrases
+{chr(10).join(f"- {phrase}" for phrase in result.get('common_phrases', []))}
+
+## Recommendation
+{result['description']}
+
+---
+*This report was generated automatically by the Grade-Flow Plagiarism Detection System*
+        """
+        
+        # Provide download
+        st.download_button(
+            label="📥 Download Report",
+            data=report_content,
+            file_name=f"plagiarism_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+            mime="text/markdown"
+        )
+        
+    except Exception as e:
+        st.error(f"Error generating report: {e}")

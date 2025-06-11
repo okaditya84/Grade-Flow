@@ -4,6 +4,7 @@ import hashlib
 import streamlit as st
 from datetime import datetime, timedelta
 import uuid
+import re
 
 
 # User data directory

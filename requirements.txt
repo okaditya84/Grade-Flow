@@ -14,3 +14,9 @@ numpy
 pdfplumber
 pymupdf
 fpdf
+sentence-transformers
+scikit-learn
+nltk
+textstat
+spacy
+plotly

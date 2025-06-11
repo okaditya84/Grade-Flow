@@ -808,6 +808,9 @@ def show_realtime_monitor():
         if st.button("🧹 Clean Old Data"):
             clean_old_submissions()
     
+    st.markdown("---")
+    show_plagiarism_monitoring()
+
     # Real-time charts
     st.markdown("---")
     st.subheader("📈 Real-time Metrics")
@@ -1527,3 +1530,61 @@ def show_system_controls():
     
     with control_tabs[2]:
         show_session_management()
+
+def show_plagiarism_monitoring():
+    """Show plagiarism monitoring in admin interface"""
+    st.subheader("🔍 Plagiarism Monitoring")
+    
+    try:
+        from plagiarism_detector import PlagiarismDatabase
+        db = PlagiarismDatabase()
+        
+        # Get recent plagiarism cases
+        recent_cases = db.get_plagiarism_results(limit=20)
+        
+        if recent_cases:
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            total_cases = len(recent_cases)
+            critical_cases = len([r for r in recent_cases if r['plagiarism_level'] == 'CRITICAL'])
+            high_cases = len([r for r in recent_cases if r['plagiarism_level'] == 'HIGH'])
+            avg_similarity = np.mean([r['composite_score'] for r in recent_cases])
+            
+            with col1:
+                st.metric("Total Cases", total_cases)
+            with col2:
+                st.metric("Critical Cases", critical_cases, delta=critical_cases)
+            with col3:
+                st.metric("High Risk Cases", high_cases, delta=high_cases)
+            with col4:
+                st.metric("Avg Similarity", f"{avg_similarity:.1f}%")
+            
+            # Recent cases table
+            st.subheader("Recent Plagiarism Cases")
+            
+            case_data = []
+            for case in recent_cases[:10]:
+                case_data.append({
+                    'Date': case['analysis_timestamp'][:10],
+                    'Level': case['plagiarism_level'],
+                    'Similarity': f"{case['composite_score']}%",
+                    'Student 1': case['submission1_info']['student_email'].split('@')[0],
+                    'Student 2': case['submission2_info']['student_email'].split('@')[0],
+                    'Course': case['submission1_info']['course']
+                })
+            
+            if case_data:
+                case_df = pd.DataFrame(case_data)
+                st.dataframe(case_df, use_container_width=True)
+            
+            # Alert for critical cases
+            critical_recent = [r for r in recent_cases if r['plagiarism_level'] == 'CRITICAL']
+            if critical_recent:
+                st.error(f"🚨 {len(critical_recent)} CRITICAL plagiarism cases detected!")
+                
+        else:
+            st.info("No plagiarism cases detected yet.")
+            
+    except Exception as e:
+        st.error(f"Error loading plagiarism data: {e}")

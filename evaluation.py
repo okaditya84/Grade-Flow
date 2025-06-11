@@ -12,6 +12,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from utils import get_published_question_papers
+from plagiarism_detector import PlagiarismDetector, PlagiarismDatabase
 
 def update_submission_status(student_email, submission_type, course, title, status, evaluation_result=None):
     """Update the status of a submission in the submission record"""
@@ -309,10 +310,14 @@ def save_evaluation_result(student_email, submission_type, course, title, evalua
 
 
 def evaluate_test_submissions(course_code, paper_title, submissions):
-    """Evaluate test submissions against the published question paper"""
+    """Evaluate test submissions against the published question paper with plagiarism detection"""
     # Set up the LLM
     groq_api_key = os.getenv("GROQ_API_KEY")
     llm = ChatGroq(groq_api_key=groq_api_key, model_name="Gemma2-9b-It")
+    
+    # Initialize plagiarism detector
+    plagiarism_detector = PlagiarismDetector()
+    plagiarism_db = PlagiarismDatabase()
     
     try:
         # Get the published paper (with correct answers)
@@ -326,6 +331,34 @@ def evaluate_test_submissions(course_code, paper_title, submissions):
         
         if not paper_data:
             return [], "Question paper not found"
+        
+        # First, run plagiarism detection on all submissions
+        st.info("🔍 Running plagiarism detection...")
+        plagiarism_cases = []
+        
+        for i in range(len(submissions)):
+            for j in range(i + 1, len(submissions)):
+                # Skip same student comparisons
+                if submissions[i].get('student_email') == submissions[j].get('student_email'):
+                    continue
+                
+                result = plagiarism_detector.compare_submissions(submissions[i], submissions[j])
+                
+                if result and result['plagiarism_level'] in ['CRITICAL', 'HIGH', 'MODERATE']:
+                    plagiarism_cases.append(result)
+                    plagiarism_db.save_plagiarism_result(result)
+        
+        if plagiarism_cases:
+            st.warning(f"⚠️ Found {len(plagiarism_cases)} potential plagiarism cases!")
+            
+            # Show plagiarism alert
+            with st.expander("🚨 Plagiarism Alert - Click to view details"):
+                for case in plagiarism_cases:
+                    st.error(
+                        f"**{case['plagiarism_level']} Similarity ({case['composite_score']}%)**: "
+                        f"{case['submission1_info']['student_email'].split('@')[0]} vs "
+                        f"{case['submission2_info']['student_email'].split('@')[0]}"
+                    )
         
         # Evaluate each submission
         results = []
@@ -347,6 +380,13 @@ def evaluate_test_submissions(course_code, paper_title, submissions):
             
             # Analysis of each question/answer
             detailed_analysis = []
+            
+            # Check if this student is involved in plagiarism
+            plagiarism_flag = any(
+                student_email in [case['submission1_info']['student_email'], 
+                                case['submission2_info']['student_email']]
+                for case in plagiarism_cases
+            )
             
             # Process each question
             for i, question in enumerate(paper_data["questions"]):
@@ -509,6 +549,13 @@ def evaluate_test_submissions(course_code, paper_title, submissions):
             if unanswered_count > 0:
                 areas_for_improvement.append(f"Did not attempt {unanswered_count} question(s).")
             
+            # Add plagiarism warning to areas for improvement
+            if plagiarism_flag:
+                areas_for_improvement.insert(0, 
+                    "⚠️ PLAGIARISM DETECTED: Significant similarity found with other submission(s). "
+                    "This may affect your final grade."
+                )
+            
             # Prepare evaluation result
             evaluation_result = {
                 'Student': student_email.split('@')[0],
@@ -518,7 +565,11 @@ def evaluate_test_submissions(course_code, paper_title, submissions):
                 'Strengths': "; ".join(strengths),
                 'Areas for Improvement': "; ".join(areas_for_improvement),
                 'Detailed Analysis': "\n\n".join(detailed_analysis),
-                'Confidence_Score': 10  # High confidence since we're using exact matching for most cases
+                'Confidence_Score': 10,  # High confidence since we're using exact matching for most cases
+                'Plagiarism_Flag': plagiarism_flag,  # New field
+                'Plagiarism_Cases': len([c for c in plagiarism_cases 
+                                       if student_email in [c['submission1_info']['student_email'], 
+                                                           c['submission2_info']['student_email']]])
             }
             
             # Save evaluation result
@@ -542,7 +593,7 @@ def evaluate_test_submissions(course_code, paper_title, submissions):
             
             results.append(evaluation_result)
         
-        return results, "Evaluation completed successfully"
+        return results, f"Evaluation completed successfully. Found {len(plagiarism_cases)} plagiarism cases."
     
     except Exception as e:
         print(f"Error evaluating test submissions: {e}")
