@@ -1,0 +1,97 @@
+{
+  "title": "Test101",
+  "course": "AIML",
+  "created_date": "2025-06-09 08:56:16",
+  "deadline": "2025-06-16",
+  "instructions": "1. Attempt all questions.\n2. Each question carries marks as indicated.\n3. Write clear and concise answers.\n4. Time management is crucial.",
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "Which of the following is a major challenge in training RNNs?",
+      "question_type": "Multiple Choice",
+      "marks": 3,
+      "difficulty": "medium",
+      "correct_answer": "Vanishing Gradients",
+      "options": [
+        "Overfitting",
+        "Underfitting",
+        "Vanishing Gradients",
+        "Data Imbalance"
+      ]
+    },
+    {
+      "question_number": 2,
+      "question_text": "Explain how the vanishing gradient problem can affect the training of deep RNNs.",
+      "question_type": "Short Answer",
+      "marks": 3,
+      "difficulty": "medium",
+      "correct_answer": "The vanishing gradient problem can prevent RNNs from learning long-range dependencies in sequential data because gradients become increasingly smaller as they backpropagate through many layers. This makes it difficult for the network to update the weights of earlier layers effectively."
+    },
+    {
+      "question_number": 3,
+      "question_text": "Describe a technique used to mitigate the vanishing gradient problem in RNNs.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "Several techniques can be used to mitigate the vanishing gradient problem, such as: \n- **Using activation functions like ReLU or tanh that help alleviate the gradient vanishing issue.** \n- **Employing gradient clipping to prevent excessively small or large gradients.** \n- **Utilizing specialized RNN architectures like LSTMs or GRUs, which have internal mechanisms to handle vanishing gradients more effectively.**"
+    },
+    {
+      "question_number": 4,
+      "question_text": "What is a key difference in the way information is processed by RNNs compared to traditional feedforward neural networks?",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "RNNs have internal memory, allowing them to process sequential data by maintaining a hidden state that captures information from previous time steps. This enables them to learn dependencies and context within sequences, unlike feedforward networks that process each input independently."
+    },
+    {
+      "question_number": 5,
+      "question_text": "Briefly explain how LSTMs address the vanishing gradient problem more effectively than vanilla RNNs.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "LSTMs introduce a memory cell and gating mechanisms (input, forget, and output gates) that regulate information flow within the network. These gates allow LSTMs to selectively remember or forget information from previous time steps, mitigating the impact of vanishing gradients on long-term dependencies."
+    },
+    {
+      "question_number": 6,
+      "question_text": "What is a common application of RNNs, and why are they well-suited for this task?",
+      "question_type": "Long Answer",
+      "marks": 7,
+      "difficulty": "medium",
+      "correct_answer": "**Natural Language Processing (NLP)**:\nRNNs are widely used in NLP tasks such as machine translation, text summarization, and sentiment analysis. Their ability to process sequential data and capture context within sentences makes them ideal for understanding and generating human language."
+    },
+    {
+      "question_number": 7,
+      "question_text": "Describe two key advantages of using LSTMs over vanilla RNNs for sequence modeling tasks.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "LSTMs offer two key advantages over vanilla RNNs:\n1. **Handling Long-Term Dependencies:** LSTMs can effectively learn and remember information from distant time steps due to their gating mechanisms, overcoming the vanishing gradient problem. \n2. **Improved Performance:** LSTMs often demonstrate superior performance on sequence modeling tasks compared to vanilla RNNs, especially when dealing with long sequences."
+    },
+    {
+      "question_number": 8,
+      "question_text": "What is a potential limitation of using RNNs for tasks involving very long sequences?",
+      "question_type": "Short Answer",
+      "marks": 3,
+      "difficulty": "medium",
+      "correct_answer": "RNNs can struggle with tasks involving extremely long sequences due to the computational cost and potential for vanishing or exploding gradients. As the sequence length increases, the memory requirements and training time grow significantly."
+    },
+    {
+      "question_number": 9,
+      "question_text": "How does transfer learning benefit the development of RNN models?",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "Transfer learning allows us to leverage pre-trained RNN models on large datasets and fine-tune them for specific tasks. This can significantly reduce the amount of data and computational resources required to train a new model, leading to faster development and improved performance, especially for tasks with limited data availability."
+    },
+    {
+      "question_number": 10,
+      "question_text": "List two potential limitations of both RNNs and CNNs in general.",
+      "question_type": "Short Answer",
+      "marks": 5,
+      "difficulty": "medium",
+      "correct_answer": "**RNNs:** \n1. Computational Cost: Training RNNs can be computationally expensive, especially for long sequences. \n2. Difficulty with Long-Term Dependencies: While LSTMs mitigate this issue, RNNs still face challenges in learning long-range dependencies in very long sequences. \n\n**CNNs:**\n1. Limited Contextual Understanding: CNNs primarily focus on local features and may struggle with tasks requiring a deep understanding of global context. \n2. Data Dependence: CNNs often require large amounts of labeled data for training, which can be time-consuming and expensive to acquire."
+    }
+  ],
+  "include_answers": false,
+  "status": "active"
+}
