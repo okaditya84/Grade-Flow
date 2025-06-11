@@ -95,3 +95,18 @@ def get_college_domain(email):
     if match:
         return match.group(1)
     return None
+
+def is_admin(email):
+    """Check if the user is an admin based on email domain"""
+    return email.endswith("@admin.pdpu.ac.in") or email.endswith("@admin.pdpu.ac.in")
+
+def get_user_role(email):
+    """Get user role based on email domain"""
+    if is_admin(email):
+        return "admin"
+    elif is_teacher(email):
+        return "teacher"
+    elif is_student(email):
+        return "student"
+    else:
+        return None

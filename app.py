@@ -1,8 +1,9 @@
 import os
 import streamlit as st
-from auth import authenticate_user, signup_user, is_student, is_teacher
+from auth import authenticate_user, signup_user, is_student, is_teacher, is_admin, get_user_role
 from student_interface import show_student_interface
 from teacher_interface import show_teacher_interface
+from admin_interface import show_admin_interface
 from utils import setup_directories, load_css, update_active_tests
 from dotenv import load_dotenv
 
@@ -17,7 +18,6 @@ st.set_page_config(
 # Load environment variables
 load_dotenv()
 
-
 # Setup session state
 def init_session_state():
     if "authenticated" not in st.session_state:
@@ -28,7 +28,6 @@ def init_session_state():
         st.session_state.user_email = None
     if "college_domain" not in st.session_state:
         st.session_state.college_domain = None
-
 
 def main():
     # Initialize the application
@@ -46,6 +45,8 @@ def main():
             show_student_interface()
         elif st.session_state.user_role == "teacher":
             show_teacher_interface()
+        elif st.session_state.user_role == "admin":
+            show_admin_interface()
         else:
             st.error("Unknown user role. Please log out and try again.")
 
@@ -55,7 +56,6 @@ def main():
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
-
 
 def show_auth_page():
     st.title("🏫 Grade Flow 🏫")
@@ -74,44 +74,38 @@ def show_auth_page():
                 st.session_state.user_email = email
 
                 # Determine user role based on email
-                if is_student(email):
-                    st.session_state.user_role = "student"
-                elif is_teacher(email):
-                    st.session_state.user_role = "teacher"
+                user_role = get_user_role(email)
+                if user_role:
+                    st.session_state.user_role = user_role
+                    st.success("Login successful!")
+                    st.rerun()
                 else:
-                    st.error(
-                        "Invalid email domain. Please use your institutional email."
-                    )
+                    st.error("Invalid email domain. Please use your institutional email.")
                     st.session_state.authenticated = False
-                    return
-
-                st.success("Login successful!")
-                st.rerun()
             else:
-                st.error("Invalid credentials. Please try again.")
+                st.error("Invalid email or password.")
 
     with tab2:
         st.subheader("Sign Up")
         new_email = st.text_input("Email Address", key="signup_email")
         new_password = st.text_input("Password", type="password", key="signup_password")
-        confirm_password = st.text_input(
-            "Confirm Password", type="password", key="confirm_password"
-        )
+        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_password")
 
         if st.button("Sign Up"):
             if new_password != confirm_password:
-                st.error("Passwords do not match!")
+                st.error("Passwords do not match.")
                 return
 
-            if not (is_student(new_email) or is_teacher(new_email)):
-                st.error("Please use your institutional email (student or faculty).")
+            # Validate email domain
+            user_role = get_user_role(new_email)
+            if not user_role:
+                st.error("Please use a valid institutional email address.")
                 return
 
             if signup_user(new_email, new_password):
-                st.success("Account created successfully! You can now login.")
+                st.success("Account created successfully! You can now log in.")
             else:
-                st.error("Email already registered or error creating account.")
-
+                st.error("Email already exists or signup failed.")
 
 if __name__ == "__main__":
     main()

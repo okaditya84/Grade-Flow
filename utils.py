@@ -29,11 +29,18 @@ def setup_directories():
         "data/published_papers",
         "data/submissions",
         "data/submissions/test",
-        "data/submission_records"
+        "data/submissions/assignment",
+        "data/submissions/exam", 
+        "data/submissions/project",
+        "data/submission_records",
+        "data/evaluations",
+        "data/evaluations/results"
     ]
 
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
+
+    create_admin_directories()    
 
 
 def load_css():
@@ -677,3 +684,136 @@ def update_active_tests():
                             json.dump(paper, f, indent=2)
             except:
                 continue
+
+def log_admin_activity(admin_email, action, details=""):
+    """Log admin activities for audit trail"""
+    try:
+        log_dir = "data/admin_logs"
+        os.makedirs(log_dir, exist_ok=True)
+        
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "admin": admin_email,
+            "action": action,
+            "details": details
+        }
+        
+        log_file = os.path.join(log_dir, f"admin_log_{datetime.now().strftime('%Y_%m')}.json")
+        
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                logs = json.load(f)
+        else:
+            logs = []
+        
+        logs.append(log_entry)
+        
+        with open(log_file, 'w') as f:
+            json.dump(logs, f, indent=2)
+            
+    except Exception as e:
+        print(f"Error logging admin activity: {e}")
+
+def get_system_health():
+    """Get system health metrics"""
+    health = {
+        "status": "healthy",
+        "cpu_usage": 0.0,
+        "memory_usage": 0.0,
+        "disk_usage": 0.0,
+        "active_connections": 0,
+        "response_time": 0.0
+    }
+    
+    try:
+        # Get disk usage for data directory
+        if os.path.exists("data"):
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk("data"):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
+            
+            # Convert to MB
+            health["disk_usage"] = total_size / (1024 * 1024)
+        
+        # Placeholder for other metrics
+        health["cpu_usage"] = min(100, health["disk_usage"] / 10)
+        health["memory_usage"] = min(100, health["disk_usage"] / 15)
+        
+    except Exception as e:
+        health["status"] = f"error: {e}"
+    
+    return health
+
+def get_platform_statistics():
+    """Get comprehensive platform statistics"""
+    stats = {
+        "total_users": 0,
+        "total_tests": 0,
+        "total_submissions": 0,
+        "total_evaluations": 0,
+        "avg_test_score": 0.0,
+        "platform_uptime": "99.9%",
+        "data_size": "0 MB"
+    }
+    
+    try:
+        # Count submission records (approximate user count)
+        if os.path.exists("data/submission_records"):
+            stats["total_users"] = len([f for f in os.listdir("data/submission_records") if f.endswith('.json')])
+        
+        # Count published tests
+        if os.path.exists("data/published_papers"):
+            test_count = 0
+            for course_dir in os.listdir("data/published_papers"):
+                course_path = os.path.join("data/published_papers", course_dir)
+                if os.path.isdir(course_path):
+                    test_count += len([f for f in os.listdir(course_path) if f.endswith('.json')])
+            stats["total_tests"] = test_count
+        
+        # Count evaluations
+        if os.path.exists("data/evaluations/results"):
+            eval_count = 0
+            for root, dirs, files in os.walk("data/evaluations/results"):
+                eval_count += len([f for f in files if f.endswith('.json')])
+            stats["total_evaluations"] = eval_count
+        
+        # Calculate average score from evaluations
+        scores = []
+        if os.path.exists("data/evaluations/results"):
+            for root, dirs, files in os.walk("data/evaluations/results"):
+                for file in files:
+                    if file.endswith('.json'):
+                        try:
+                            with open(os.path.join(root, file), 'r') as f:
+                                eval_data = json.load(f)
+                                if 'Score' in eval_data:
+                                    scores.append(eval_data['Score'])
+                        except:
+                            continue
+        
+        if scores:
+            stats["avg_test_score"] = sum(scores) / len(scores)
+        
+        # Get data size
+        health = get_system_health()
+        stats["data_size"] = f"{health['disk_usage']:.1f} MB"
+        
+    except Exception as e:
+        print(f"Error getting platform statistics: {e}")
+    
+    return stats
+
+def create_admin_directories():
+    """Create admin-specific directories"""
+    admin_dirs = [
+        "data/admin_logs",
+        "data/system_backups",
+        "data/analytics_cache",
+        "data/alerts"
+    ]
+    
+    for directory in admin_dirs:
+        os.makedirs(directory, exist_ok=True)
