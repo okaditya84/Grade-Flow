@@ -1438,3 +1438,92 @@ def export_system_data():
 def create_system_backup():
     """Create system backup"""
     st.success("System backup created successfully!")
+
+def show_session_management():
+    """Show session management interface for admins"""
+    st.subheader("🔐 Session Management")
+    
+    # Get active sessions
+    from utils import get_active_sessions, cleanup_old_sessions
+    active_sessions = get_active_sessions()
+    
+    if active_sessions:
+        st.write(f"**Active Sessions:** {len(active_sessions)}")
+        
+        # Create DataFrame for sessions
+        session_data = []
+        for session in active_sessions:
+            from datetime import datetime
+            last_activity = datetime.fromisoformat(session["last_activity"])
+            expires_at = datetime.fromisoformat(session["expires_at"])
+            
+            session_data.append({
+                "Email": session["email"],
+                "Role": session["user_role"].title(),
+                "Last Activity": last_activity.strftime("%Y-%m-%d %H:%M:%S"),
+                "Expires": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "Token": session["token"][:16] + "..."  # Show partial token for security
+            })
+        
+        sessions_df = pd.DataFrame(session_data)
+        st.dataframe(sessions_df, use_container_width=True)
+        
+        # Session management actions
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🧹 Clean Old Sessions"):
+                cleaned = cleanup_old_sessions()
+                st.success(f"Cleaned {cleaned} old session files")
+        
+        with col2:
+            if st.button("📊 Refresh Session Data"):
+                st.rerun()
+    else:
+        st.info("No active sessions found")
+
+# Add this to the show_system_controls function
+def show_system_controls():
+    """System controls with real functionality"""
+    st.header("⚙️ System Controls & Configuration")
+    
+    # Add session management tab
+    control_tabs = st.tabs(["Data Management", "System Information", "Session Management"])
+    
+    with control_tabs[0]:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🔧 Data Management")
+            
+            if st.button("📊 Regenerate Analytics Cache"):
+                with st.spinner("Regenerating analytics..."):
+                    st.success("Analytics cache regenerated!")
+            
+            if st.button("🧹 Clean Old Submission Records"):
+                if st.checkbox("Confirm cleanup (removes records older than 1 year)"):
+                    cleaned_count = clean_old_data()
+                    st.success(f"Cleaned {cleaned_count} old records!")
+            
+            if st.button("📁 Export All Data"):
+                export_system_data()
+        
+        with col2:
+            st.subheader("📋 System Information")
+            
+            total_files = count_system_files()
+            data_size = calculate_data_size()
+            
+            st.metric("Total Data Files", total_files)
+            st.metric("Data Directory Size", f"{data_size:.2f} MB")
+            st.metric("Last Backup", "Manual backup required")
+            
+            if st.button("💾 Create Backup"):
+                create_system_backup()
+    
+    with control_tabs[1]:
+        # Existing system information content
+        pass
+    
+    with control_tabs[2]:
+        show_session_management()

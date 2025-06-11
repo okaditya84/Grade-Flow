@@ -34,7 +34,12 @@ def setup_directories():
         "data/submissions/project",
         "data/submission_records",
         "data/evaluations",
-        "data/evaluations/results"
+        "data/evaluations/results",
+        "data/sessions",  # Add this line for session persistence
+        "data/admin_logs",
+        "data/system_backups",
+        "data/analytics_cache",
+        "data/alerts"
     ]
 
     for directory in directories:
@@ -817,3 +822,58 @@ def create_admin_directories():
     
     for directory in admin_dirs:
         os.makedirs(directory, exist_ok=True)
+
+def get_active_sessions():
+    """Get list of active sessions"""
+    try:
+        session_dir = "data/sessions"
+        active_sessions = []
+        
+        if os.path.exists(session_dir):
+            from datetime import datetime
+            current_time = datetime.now()
+            
+            for filename in os.listdir(session_dir):
+                if filename.endswith('.json'):
+                    session_file = os.path.join(session_dir, filename)
+                    try:
+                        with open(session_file, 'r') as f:
+                            session_data = json.load(f)
+                        
+                        expires_at = datetime.fromisoformat(session_data["expires_at"])
+                        if current_time < expires_at:
+                            active_sessions.append(session_data)
+                    except:
+                        continue
+        
+        return active_sessions
+    except Exception as e:
+        print(f"Error getting active sessions: {e}")
+        return []
+
+def cleanup_old_sessions():
+    """Clean up old session files (older than 30 days)"""
+    try:
+        session_dir = "data/sessions"
+        if not os.path.exists(session_dir):
+            return 0
+        
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.now() - timedelta(days=30)
+        cleaned_count = 0
+        
+        for filename in os.listdir(session_dir):
+            if filename.endswith('.json'):
+                session_file = os.path.join(session_dir, filename)
+                try:
+                    file_mod_time = datetime.fromtimestamp(os.path.getmtime(session_file))
+                    if file_mod_time < cutoff_date:
+                        os.remove(session_file)
+                        cleaned_count += 1
+                except:
+                    continue
+        
+        return cleaned_count
+    except Exception as e:
+        print(f"Error cleaning old sessions: {e}")
+        return 0
