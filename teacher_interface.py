@@ -27,6 +27,61 @@ def show_teacher_interface():
     st.title(f"👨‍🏫 Teacher Dashboard")
     st.write(f"Welcome, {st.session_state.user_email}")
 
+    # Add custom CSS for better tab visibility in dark mode
+    st.markdown("""
+    <style>
+    /* Improve tab visibility for dark mode */
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 16px;
+        font-weight: 600;
+        color: #ffffff !important; /* White text for all tabs */
+    }
+    
+    /* Active tab styling */
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        background-color: #0e4b99 !important; /* Blue background for active tab */
+        border-bottom: 3px solid #1f77b4 !important; /* Blue bottom border */
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] [data-testid="stMarkdownContainer"] p {
+        color: #ffffff !important; /* White text for active tab */
+    }
+    
+    /* Inactive tab styling */
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="false"] {
+        background-color: #2d3748 !important; /* Darker background for inactive tabs */
+        border-bottom: 2px solid #4a5568 !important; /* Gray bottom border */
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="false"] [data-testid="stMarkdownContainer"] p {
+        color: #e2e8f0 !important; /* Light gray text for inactive tabs */
+    }
+    
+    /* Hover effect for inactive tabs */
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="false"]:hover {
+        background-color: #4a5568 !important; /* Lighter gray on hover */
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="false"]:hover [data-testid="stMarkdownContainer"] p {
+        color: #ffffff !important; /* White text on hover */
+    }
+    
+    /* Tab list container */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #1a202c !important; /* Dark background for tab container */
+        border-radius: 8px 8px 0 0;
+        padding: 4px;
+    }
+    
+    /* Individual tab buttons */
+    .stTabs [data-baseweb="tab-list"] button {
+        border-radius: 6px !important;
+        margin: 0 2px;
+        transition: all 0.2s ease-in-out;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Create main tabs - ADD plagiarism detection tab
     tabs = st.tabs([
         "Evaluate Tests", 
