@@ -12,6 +12,14 @@ An advanced application for evaluating student submissions using AI. This tool h
 - 🤖 **AI-Powered Evaluation**: Automatic grading powered by Groq and Gemma-2 models  
 - 🗂️ **Robust Vector Storage**: Efficient document storage and retrieval  
 - 📊 **Detailed Reports**: Comprehensive feedback and performance analysis  
+- 🧬 **Plagiarism Check**: Check for plagiarism across the platform (submitted and ongoing tests)  
+- ⚙️ **Custom Plagiarism Settings**: Configure plagiarism check criteria based on institution or instructor preferences  
+- 📈 **Advanced Data Insights**: Gain better insights into student performance and feedback  
+- 🛠️ **Admin Panel**: Full-featured admin panel with monitoring and management tools  
+- 📝 **Automated Question Paper Generation**: Generate tests automatically based on predefined templates and subjects  
+- ⏱️ **Timed Test Environment**: Students can take tests in a timed and controlled environment  
+- 🧑‍⚖️ **Manual Evaluation**: Teachers can evaluate timed tests and provide personalized feedback  
+- 💾 **Efficient Deployment**: Deployed with optimized storage and resource management  
 
 ---
 
