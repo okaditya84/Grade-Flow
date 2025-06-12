@@ -1,0 +1,11 @@
+[
+  {
+    "Student Email": "abc@students.pdpu.ac.in",
+    "Course": "AWT101",
+    "Type": "Assignment",
+    "Title": "Django assignment",
+    "File Path": "data/submissions/assignment\\abc_AWT101_20250611_205049.pdf",
+    "Submission Date": "2025-06-11 20:50:49",
+    "Evaluation Status": "Pending"
+  }
+]
