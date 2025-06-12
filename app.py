@@ -335,7 +335,7 @@ def show_enhanced_landing_page():
                 <script>
                 window.addEventListener('load', function() {{
                     const messageType = '{auth_result}';
-                    const messageText = '{auth_message.replace("'", "\\'")}';
+                    const messageText = {json.dumps(auth_message)};
                     
                     // Create or update message element
                     let messageEl = document.getElementById('auth-message');
