@@ -87,6 +87,13 @@ The application will be available at 👉 [http://localhost:8501](http://localho
 4. Evaluate student submissions with AI support  
 5. View and download comprehensive reports  
 
+
+### Test Credentials
+- **Student Email**: `adityajethani@students.pdpu.ac.in`
+- **Faculty Email**: `debu@faculty.pdpu.ac.in`
+- **Admin Email**: `sm@admin.pdpu.ac.in`
+### Passwords
+- All passwords are set to `harry` for the above credentials.
 ---
 
 ## 🗂️ Project Structure
