@@ -1,13 +1,22 @@
 Created by: debu@faculty.pdpu.ac.in
-Date: 2025-04-03 10:35:12
+Date: 2025-06-12 22:17:50
 
 Evaluation Criteria for Assignments:
-1. Understanding: 30 points - Demonstrates grasp of concepts and theories
-2. Application: 30 points - Correctly applies concepts to problems
-3. Thoroughness: 20 points - Covers all aspects of the assignment
-4. Creativity: 10 points - Shows original thinking when appropriate
-5. Presentation: 10 points - Well-structured and professionally presented
+
+Concept Understanding – 25
+Shows grasp of Locally Weighted Regression and weight logic.
+
+Implementation – 25
+Correct dataset generation and LWR algorithm code.
+
+Experimentation – 20
+Tests multiple query points and bandwidths with analysis.
+
+Visualization – 15
+Clear, labeled plots comparing fits.
+
+Presentation – 15
+Well-structured PDF with code, results, and explanations.
 
 Higher weight questions should demonstrate deeper understanding and application.
 Lower weight questions focus on basic concept correctness.
-Evaluate very strictly.
